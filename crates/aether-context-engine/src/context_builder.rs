@@ -94,3 +94,34 @@ impl ContextBuilder {
         header
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_context_builder_header_formatting() {
+        let builder = ContextBuilder::new(PathBuf::from("/mock/workspace"));
+        let ctx = ProjectContext {
+            workspace_name: "MyProject".to_string(),
+            active_file: Some(ActiveFileContext {
+                path: "src/main.rs".to_string(),
+                content: "fn main() {}".to_string(),
+                cursor_line: Some(1),
+                selected_text: Some("fn main()".to_string()),
+            }),
+            git_diff: Some("+ added line".to_string()),
+            git_branch: Some("feature/ai-agent".to_string()),
+            project_rules: Some("- Strict typing\n- No unwrap()".to_string()),
+            recent_files: vec!["src/main.rs".to_string()],
+        };
+
+        let header = builder.format_prompt_header(&ctx);
+        assert!(header.contains("### Workspace Context: MyProject"));
+        assert!(header.contains("Git Branch: feature/ai-agent"));
+        assert!(header.contains("#### Project Rules:"));
+        assert!(header.contains("Active File: src/main.rs"));
+        assert!(header.contains("Selected Code:"));
+        assert!(header.contains("Uncommitted Git Changes:"));
+    }
+}

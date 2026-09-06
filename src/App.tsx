@@ -27,7 +27,10 @@ import { AgentGraph, PipelineStageState } from './components/AgentGraph';
 import { AgentTimeline } from './components/AgentTimeline';
 import { PermissionDialog } from './components/PermissionDialog';
 import { SettingsModal } from './components/SettingsModal';
-import { Bot, GitBranch, Shield, Sparkles } from 'lucide-react';
+import { AgentOsCockpit } from './components/AgentOsCockpit';
+import { AgentChatPanel } from './components/AgentChatPanel';
+import { DiffReviewModal } from './components/DiffReviewModal';
+import { Bot, GitBranch, MessageSquare, Shield, Sparkles } from 'lucide-react';
 
 export const App: React.FC = () => {
   // Navigation & Mode
@@ -36,6 +39,13 @@ export const App: React.FC = () => {
   const [isTerminalOpen, setIsTerminalOpen] = useState(true);
   const [isCommandCenterOpen, setIsCommandCenterOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [rightPanelTab, setRightPanelTab] = useState<'swarm' | 'copilot'>('swarm');
+  const [activeReviewDiff, setActiveReviewDiff] = useState<{
+    path: string;
+    original: string;
+    modified: string;
+    description: string;
+  } | null>(null);
 
   // Workspace & Files
   const [workspaceInfo, setWorkspaceInfo] = useState<WorkspaceInfo | null>(null);
@@ -351,24 +361,30 @@ export const App: React.FC = () => {
           />
         )}
 
-        {/* Center Editor Area + Bottom Dock */}
+        {/* Center Editor Area / Agent OS Cockpit + Bottom Dock */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          {appMode === 'agent' && (
-            <AgentGraph
-              stages={pipelineStages}
-              activeStageIndex={activeStageIndex}
-            />
-          )}
+          {appMode === 'os' ? (
+            <AgentOsCockpit />
+          ) : (
+            <>
+              {appMode === 'agent' && (
+                <AgentGraph
+                  stages={pipelineStages}
+                  activeStageIndex={activeStageIndex}
+                />
+              )}
 
-          <EditorArea
-            openTabs={openTabs}
-            activeTabIndex={activeTabIndex}
-            onSelectTab={setActiveTabIndex}
-            onCloseTab={handleCloseTab}
-            onContentChange={handleContentChange}
-            onSave={handleSaveFile}
-            onAiInlineEdit={handleAiInlineEdit}
-          />
+              <EditorArea
+                openTabs={openTabs}
+                activeTabIndex={activeTabIndex}
+                onSelectTab={setActiveTabIndex}
+                onCloseTab={handleCloseTab}
+                onContentChange={handleContentChange}
+                onSave={handleSaveFile}
+                onAiInlineEdit={handleAiInlineEdit}
+              />
+            </>
+          )}
 
           {isTerminalOpen && (
             <TerminalPanel
@@ -389,14 +405,51 @@ export const App: React.FC = () => {
           )}
         </div>
 
-        {/* Right Panel: AI Multi-Agent Orchestrator / Timeline */}
-        {(appMode === 'agent' || activeActivityTab === 'agents' || appMode === 'os') && (
+        {/* Right Panel: AI Multi-Agent Orchestrator / Timeline / Copilot */}
+        {(appMode === 'agent' || activeActivityTab === 'agents' || rightPanelTab === 'copilot') && (
           <aside className="right-panel">
-            <div className="right-panel-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Bot size={15} color="var(--accent-primary)" />
-                <span>Autonomous Multi-Agent Swarm</span>
+            <div className="right-panel-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <button
+                  onClick={() => setRightPanelTab('swarm')}
+                  style={{
+                    background: rightPanelTab === 'swarm' ? 'var(--bg-surface)' : 'transparent',
+                    border: rightPanelTab === 'swarm' ? '1px solid var(--border-subtle)' : 'none',
+                    color: rightPanelTab === 'swarm' ? '#fff' : 'var(--text-secondary)',
+                    padding: '3px 8px',
+                    borderRadius: '4px',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  <Bot size={13} color="var(--accent-primary)" />
+                  Swarm
+                </button>
+                <button
+                  onClick={() => setRightPanelTab('copilot')}
+                  style={{
+                    background: rightPanelTab === 'copilot' ? 'var(--bg-surface)' : 'transparent',
+                    border: rightPanelTab === 'copilot' ? '1px solid var(--border-subtle)' : 'none',
+                    color: rightPanelTab === 'copilot' ? '#fff' : 'var(--text-secondary)',
+                    padding: '3px 8px',
+                    borderRadius: '4px',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  <Sparkles size={13} color="var(--accent-cyan)" />
+                  Copilot
+                </button>
               </div>
+
               <span
                 style={{
                   fontSize: '10px',
@@ -406,26 +459,15 @@ export const App: React.FC = () => {
                   borderRadius: 4,
                 }}
               >
-                5-Stage Team
+                {rightPanelTab === 'swarm' ? '5-Stage Team' : 'Active Context'}
               </span>
             </div>
 
-            {appMode === 'os' ? (
-              <div style={{ padding: '14px', overflowY: 'auto', flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                  <Shield size={16} color="var(--accent-emerald)" />
-                  <span style={{ fontWeight: 600, fontSize: '13px' }}>AI Agent OS Sandboxing</span>
-                </div>
-                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                  AI Agent OS controls the host computer safely:
-                  <ul style={{ paddingLeft: '16px', marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <li><b>Process PTY:</b> Pseudo-terminal isolation for execution.</li>
-                    <li><b>Filesystem Barrier:</b> Sandboxed to workspace directory.</li>
-                    <li><b>Risk Analyzer:</b> Real-time regex inspection of dangerous commands.</li>
-                    <li><b>Immutable Audit:</b> In-memory & disk audit logs with cryptographic timestamps.</li>
-                  </ul>
-                </div>
-              </div>
+            {rightPanelTab === 'copilot' ? (
+              <AgentChatPanel
+                activeFile={openTabs[activeTabIndex]}
+                onReviewDiff={(diff) => setActiveReviewDiff(diff)}
+              />
             ) : (
               <>
                 <AgentDashboard
@@ -505,6 +547,39 @@ export const App: React.FC = () => {
         request={pendingPermissionRequest}
         onDecision={handlePermissionDecision}
       />
+
+      {/* Code Diff Review & Acceptance Modal */}
+      {activeReviewDiff && (
+        <DiffReviewModal
+          isOpen={!!activeReviewDiff}
+          filePath={activeReviewDiff.path}
+          originalContent={activeReviewDiff.original}
+          modifiedContent={activeReviewDiff.modified}
+          description={activeReviewDiff.description}
+          onAccept={async () => {
+            try {
+              await TauriBridge.writeFile(activeReviewDiff.path, activeReviewDiff.modified);
+              const idx = openTabs.findIndex((t) => t.path === activeReviewDiff.path);
+              if (idx !== -1) {
+                setOpenTabs((prev) => {
+                  const copy = [...prev];
+                  copy[idx] = {
+                    ...copy[idx],
+                    content: activeReviewDiff.modified,
+                    isModified: false,
+                  };
+                  return copy;
+                });
+              }
+              setActiveReviewDiff(null);
+            } catch (err) {
+              console.error('Failed to apply diff:', err);
+            }
+          }}
+          onReject={() => setActiveReviewDiff(null)}
+          onClose={() => setActiveReviewDiff(null)}
+        />
+      )}
     </div>
   );
 };

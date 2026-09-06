@@ -156,3 +156,50 @@ export interface AuditEntry {
   decision: string;
   reason: string;
 }
+
+export interface HostProcess {
+  name: string;
+  pid: number;
+  session?: string;
+  memory: string;
+}
+
+export interface NetworkCheckResult {
+  host: string;
+  port: number;
+  reachable: boolean;
+  latency_ms: number;
+  status: string;
+  error?: string;
+}
+
+export interface HttpRequestResult {
+  url: string;
+  status: number;
+  status_text: string;
+  headers: Record<string, string>;
+  body: string;
+  content_length: number;
+}
+
+export interface SystemStatsResult {
+  os: string;
+  arch: string;
+  family: string;
+  workspace: string;
+  num_cpus: number;
+}
+
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp: string;
+  tags?: string[];
+  suggestedDiff?: {
+    path: string;
+    original: string;
+    modified: string;
+    description: string;
+  };
+}

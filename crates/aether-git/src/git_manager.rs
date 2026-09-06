@@ -212,3 +212,52 @@ impl GitManager {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_git_repo_lifecycle() {
+        let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
+        let temp_dir = std::env::temp_dir().join(format!("aether_git_test_{}", now));
+        tokio::fs::create_dir_all(&temp_dir).await.unwrap();
+
+        let init_out = tokio::process::Command::new("git")
+            .args(["init"])
+            .current_dir(&temp_dir)
+            .output()
+            .await;
+
+        if let Ok(out) = init_out {
+            if out.status.success() {
+                let _ = tokio::process::Command::new("git")
+                    .args(["config", "user.name", "Aether Tester"])
+                    .current_dir(&temp_dir)
+                    .output()
+                    .await;
+                let _ = tokio::process::Command::new("git")
+                    .args(["config", "user.email", "tester@aetheride.internal"])
+                    .current_dir(&temp_dir)
+                    .output()
+                    .await;
+
+                let gm = GitManager::new(temp_dir.clone());
+                tokio::fs::write(temp_dir.join("test.txt"), b"initial content").await.unwrap();
+
+                let status = gm.get_status().await.unwrap();
+                assert!(!status.changes.is_empty());
+
+                gm.stage_all().await.unwrap();
+                let commit_res = gm.commit("feat: initial test commit").await;
+                assert!(commit_res.is_ok());
+
+                let log = gm.get_log(5).await.unwrap();
+                assert!(!log.is_empty());
+                assert!(log[0].message.contains("initial test commit"));
+            }
+        }
+
+        let _ = tokio::fs::remove_dir_all(&temp_dir).await;
+    }
+}

@@ -379,3 +379,117 @@ pub async fn set_category_policy(
     state.permission_manager.set_category_policy(cat, pol).await;
     Ok(())
 }
+
+// 10. OS & System Sandboxed Control Commands
+#[tauri::command]
+pub async fn os_list_processes(
+    state: State<'_, AppState>,
+    filter: Option<String>,
+) -> Result<serde_json::Value, String> {
+    let tool = state.tool_registry.get_tool("os_process_list")
+        .ok_or_else(|| "Tool 'os_process_list' not registered".to_string())?;
+
+    let ctx = aether_tool_runtime::ToolContext {
+        agent_id: None,
+        workspace_root: state.workspace.get_root().await,
+        permission_manager: state.permission_manager.clone(),
+        event_bus: state.event_bus.clone(),
+        ask_permission_channel: None,
+    };
+
+    tool.execute(serde_json::json!({ "filter": filter }), &ctx).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn os_kill_process(
+    state: State<'_, AppState>,
+    pid: u32,
+    force: Option<bool>,
+) -> Result<serde_json::Value, String> {
+    let tool = state.tool_registry.get_tool("os_kill_process")
+        .ok_or_else(|| "Tool 'os_kill_process' not registered".to_string())?;
+
+    let ctx = aether_tool_runtime::ToolContext {
+        agent_id: None,
+        workspace_root: state.workspace.get_root().await,
+        permission_manager: state.permission_manager.clone(),
+        event_bus: state.event_bus.clone(),
+        ask_permission_channel: None,
+    };
+
+    tool.execute(serde_json::json!({ "pid": pid, "force": force.unwrap_or(false) }), &ctx).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn os_network_check(
+    state: State<'_, AppState>,
+    host: String,
+    port: u16,
+    timeout_ms: Option<u64>,
+) -> Result<serde_json::Value, String> {
+    let tool = state.tool_registry.get_tool("os_network_check")
+        .ok_or_else(|| "Tool 'os_network_check' not registered".to_string())?;
+
+    let ctx = aether_tool_runtime::ToolContext {
+        agent_id: None,
+        workspace_root: state.workspace.get_root().await,
+        permission_manager: state.permission_manager.clone(),
+        event_bus: state.event_bus.clone(),
+        ask_permission_channel: None,
+    };
+
+    tool.execute(serde_json::json!({ "host": host, "port": port, "timeout_ms": timeout_ms.unwrap_or(3000) }), &ctx).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn os_http_request(
+    state: State<'_, AppState>,
+    url: String,
+    method: Option<String>,
+    body: Option<String>,
+    headers: Option<serde_json::Value>,
+) -> Result<serde_json::Value, String> {
+    let tool = state.tool_registry.get_tool("os_http_request")
+        .ok_or_else(|| "Tool 'os_http_request' not registered".to_string())?;
+
+    let ctx = aether_tool_runtime::ToolContext {
+        agent_id: None,
+        workspace_root: state.workspace.get_root().await,
+        permission_manager: state.permission_manager.clone(),
+        event_bus: state.event_bus.clone(),
+        ask_permission_channel: None,
+    };
+
+    tool.execute(serde_json::json!({
+        "url": url,
+        "method": method.unwrap_or_else(|| "GET".to_string()),
+        "body": body,
+        "headers": headers,
+    }), &ctx).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn os_get_system_stats(
+    state: State<'_, AppState>,
+) -> Result<serde_json::Value, String> {
+    let tool = state.tool_registry.get_tool("os_system_info")
+        .ok_or_else(|| "Tool 'os_system_info' not registered".to_string())?;
+
+    let ctx = aether_tool_runtime::ToolContext {
+        agent_id: None,
+        workspace_root: state.workspace.get_root().await,
+        permission_manager: state.permission_manager.clone(),
+        event_bus: state.event_bus.clone(),
+        ask_permission_channel: None,
+    };
+
+    tool.execute(serde_json::json!({}), &ctx).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn os_get_audit_logs(
+    state: State<'_, AppState>,
+    limit: Option<usize>,
+) -> Result<Vec<AuditEntry>, String> {
+    Ok(state.permission_manager.audit_logger().get_recent_entries(limit.unwrap_or(100)).await)
+}

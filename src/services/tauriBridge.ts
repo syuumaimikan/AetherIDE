@@ -7,8 +7,12 @@ import {
   FileNode,
   GitCommitInfo,
   GitRepoStatus,
+  HostProcess,
+  HttpRequestResult,
+  NetworkCheckResult,
   OrchestratorTask,
   PermissionRequest,
+  SystemStatsResult,
   TerminalSessionInfo,
   WorkspaceInfo,
 } from '../types';
@@ -436,10 +440,84 @@ async function mockInvoke<T>(cmd: string, args?: Record<string, any>): Promise<T
     }
 
     case 'list_audit_entries':
+    case 'os_get_audit_logs':
       return mockAuditEntries as unknown as T;
 
     case 'resolve_permission_request':
       return true as unknown as T;
+
+    case 'os_list_processes': {
+      const filter = (args?.filter || '').toLowerCase();
+      const mockList: HostProcess[] = [
+        { name: 'aether-desktop.exe', pid: 14208, session: 'Console', memory: '118,420 K' },
+        { name: 'cargo.exe', pid: 21904, session: 'Console', memory: '84,120 K' },
+        { name: 'rust-analyzer.exe', pid: 18432, session: 'Console', memory: '345,600 K' },
+        { name: 'powershell.exe', pid: 9812, session: 'Console', memory: '72,110 K' },
+        { name: 'node.exe', pid: 10456, session: 'Console', memory: '98,340 K' },
+        { name: 'chrome.exe', pid: 3128, session: 'Console', memory: '240,180 K' },
+        { name: 'git.exe', pid: 22890, session: 'Console', memory: '18,500 K' },
+        { name: 'explorer.exe', pid: 4820, session: 'Console', memory: '142,300 K' },
+      ];
+      const filtered = filter ? mockList.filter((p) => p.name.toLowerCase().includes(filter)) : mockList;
+      return { total_processes: filtered.length, processes: filtered } as unknown as T;
+    }
+
+    case 'os_kill_process': {
+      const pid = args?.pid || 0;
+      return {
+        success: true,
+        pid,
+        stdout: `SUCCESS: Sent termination signal to process with PID ${pid}.`,
+        stderr: '',
+      } as unknown as T;
+    }
+
+    case 'os_network_check': {
+      const host = args?.host || '127.0.0.1';
+      const port = args?.port || 80;
+      return {
+        host,
+        port,
+        reachable: true,
+        latency_ms: 12,
+        status: 'connected',
+      } as unknown as T;
+    }
+
+    case 'os_http_request': {
+      const url = args?.url || 'https://api.github.com';
+      return {
+        url,
+        status: 200,
+        status_text: 'OK',
+        headers: {
+          'content-type': 'application/json; charset=utf-8',
+          'x-powered-by': 'Aether-OS-Sandbox',
+        },
+        body: JSON.stringify(
+          {
+            status: 'operational',
+            environment: 'host-sandboxed',
+            node: 'aether-primary-v1',
+            active_tunnels: 2,
+            ping_ms: 14,
+          },
+          null,
+          2
+        ),
+        content_length: 148,
+      } as unknown as T;
+    }
+
+    case 'os_get_system_stats': {
+      return {
+        os: 'windows',
+        arch: 'x86_64',
+        family: 'windows',
+        workspace: 'D:\\Rust_Proj2\\AetherIDE',
+        num_cpus: 16,
+      } as unknown as T;
+    }
 
     default:
       console.warn(`[MockTauri] unhandled command: ${cmd}`);
@@ -508,4 +586,18 @@ export const TauriBridge = {
   listAuditEntries: (count = 50) => invokeTauri<AuditEntry[]>('list_audit_entries', { count }),
   resolvePermissionRequest: (requestId: string, decision: string) =>
     invokeTauri<boolean>('resolve_permission_request', { requestId, decision }),
+
+  // OS & Host Control
+  osListProcesses: (filter?: string) =>
+    invokeTauri<{ total_processes: number; processes: HostProcess[] }>('os_list_processes', { filter }),
+  osKillProcess: (pid: number, force = false) =>
+    invokeTauri<{ success: boolean; pid: number; stdout: string; stderr: string }>('os_kill_process', { pid, force }),
+  osNetworkCheck: (host: string, port: number, timeout_ms = 3000) =>
+    invokeTauri<NetworkCheckResult>('os_network_check', { host, port, timeout_ms }),
+  osHttpRequest: (url: string, method = 'GET', body?: string, headers?: Record<string, string>) =>
+    invokeTauri<HttpRequestResult>('os_http_request', { url, method, body, headers }),
+  osGetSystemStats: () =>
+    invokeTauri<SystemStatsResult>('os_get_system_stats'),
+  osGetAuditLogs: (limit = 100) =>
+    invokeTauri<AuditEntry[]>('os_get_audit_logs', { limit }),
 };

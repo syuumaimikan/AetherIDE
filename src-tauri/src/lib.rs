@@ -70,6 +70,13 @@ pub fn run() {
             list_audit_entries,
             resolve_permission_request,
             set_category_policy,
+            // OS Sandboxed Control & Host Tools
+            os_list_processes,
+            os_kill_process,
+            os_network_check,
+            os_http_request,
+            os_get_system_stats,
+            os_get_audit_logs,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Aether IDE application");

@@ -5,7 +5,8 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::builtin_tools::{
-    FsDeleteFileTool, FsListDirTool, FsReadFileTool, FsWriteFileTool, OsSystemInfoTool,
+    FsDeleteFileTool, FsListDirTool, FsReadFileTool, FsWriteFileTool, OsHttpRequestTool,
+    OsKillProcessTool, OsNetworkCheckTool, OsProcessListTool, OsSystemInfoTool,
     TerminalExecuteTool,
 };
 use crate::traits::{Tool, ToolContext, ToolMetadata};
@@ -42,6 +43,10 @@ impl ToolRegistry {
         self.register_tool(Arc::new(FsListDirTool));
         self.register_tool(Arc::new(TerminalExecuteTool));
         self.register_tool(Arc::new(OsSystemInfoTool));
+        self.register_tool(Arc::new(OsProcessListTool));
+        self.register_tool(Arc::new(OsKillProcessTool));
+        self.register_tool(Arc::new(OsNetworkCheckTool));
+        self.register_tool(Arc::new(OsHttpRequestTool));
     }
 
     pub fn get_tool(&self, name: &str) -> Option<Arc<dyn Tool>> {

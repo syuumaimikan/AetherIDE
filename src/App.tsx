@@ -504,6 +504,8 @@ export const App: React.FC = () => {
                 setTerminalSessions((prev) => prev.filter((s) => s.id !== id));
               }}
               onInput={(id, data) => TauriBridge.writeTerminalInput(id, data)}
+              onClosePanel={() => setIsTerminalOpen(false)}
+              onOpenFileAtLine={(path, _line) => handleOpenFile(path)}
             />
           )}
         </div>

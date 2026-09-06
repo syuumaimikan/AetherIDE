@@ -1,6 +1,16 @@
 import React, { useState } from 'react';
 import { FileMatch } from '../types';
-import { CaseSensitive, FileText, Regex, Search } from 'lucide-react';
+import {
+  CaseSensitive,
+  ChevronDown,
+  ChevronRight,
+  FileCode,
+  FileText,
+  Regex,
+  Search,
+  Replace,
+  Sparkles,
+} from 'lucide-react';
 
 interface SearchPanelProps {
   onSearch: (query: string, isRegex: boolean, caseSensitive: boolean) => Promise<FileMatch[]>;
@@ -9,10 +19,14 @@ interface SearchPanelProps {
 
 export const SearchPanel: React.FC<SearchPanelProps> = ({ onSearch, onOpenFileAtLine }) => {
   const [query, setQuery] = useState('');
+  const [replaceQuery, setReplaceQuery] = useState('');
+  const [showReplace, setShowReplace] = useState(false);
   const [isRegex, setIsRegex] = useState(false);
   const [caseSensitive, setCaseSensitive] = useState(false);
+  const [matchWholeWord, setMatchWholeWord] = useState(false);
   const [results, setResults] = useState<FileMatch[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [expandedFiles, setExpandedFiles] = useState<Record<string, boolean>>({});
 
   const handleSearchSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,101 +35,199 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onSearch, onOpenFileAt
     try {
       const res = await onSearch(query, isRegex, caseSensitive);
       setResults(res);
+      // Auto expand all files
+      const exp: Record<string, boolean> = {};
+      res.forEach((r) => {
+        exp[r.path] = true;
+      });
+      setExpandedFiles(exp);
     } finally {
       setIsSearching(false);
     }
+  };
+
+  const toggleFileExpand = (path: string) => {
+    setExpandedFiles((prev) => ({ ...prev, [path]: !prev[path] }));
   };
 
   const totalMatches = results.reduce((acc, r) => acc + r.matches.length, 0);
 
   return (
     <div className="left-sidebar">
+      {/* VS Code Search Header */}
       <div className="sidebar-header">
-        <span>Search</span>
+        <span style={{ fontWeight: 700, fontSize: '11px', letterSpacing: '0.05em' }}>
+          検索 : ワークスペース
+        </span>
       </div>
 
-      <div style={{ padding: '10px 12px' }}>
+      <div style={{ padding: '8px 12px' }}>
         <form onSubmit={handleSearchSubmit}>
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-            <input
-              type="text"
-              className="input-text"
-              style={{ width: '100%', paddingRight: '60px' }}
-              placeholder="Search in files..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-            <div
-              style={{
-                position: 'absolute',
-                right: '6px',
-                display: 'flex',
-                gap: '4px',
-              }}
+          {/* Search Input Box */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
+            <button
+              type="button"
+              className="sidebar-action-btn"
+              onClick={() => setShowReplace(!showReplace)}
+              title="置換の切り替え"
             >
-              <button
-                type="button"
-                className={`btn btn-secondary btn-sm ${caseSensitive ? 'btn-primary' : ''}`}
-                style={{ padding: '2px 4px' }}
-                onClick={() => setCaseSensitive(!caseSensitive)}
-                title="Match Case"
+              {showReplace ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+            </button>
+            <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center' }}>
+              <input
+                type="text"
+                className="input-text"
+                style={{
+                  width: '100%',
+                  paddingRight: '60px',
+                  background: 'var(--vscode-bg-input)',
+                  border: '1px solid var(--vscode-border)',
+                  color: '#ffffff',
+                  fontSize: '12px',
+                }}
+                placeholder="検索 (Enterで実行)..."
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+              <div
+                style={{
+                  position: 'absolute',
+                  right: '4px',
+                  display: 'flex',
+                  gap: '2px',
+                }}
               >
-                <CaseSensitive size={12} />
-              </button>
-              <button
-                type="button"
-                className={`btn btn-secondary btn-sm ${isRegex ? 'btn-primary' : ''}`}
-                style={{ padding: '2px 4px' }}
-                onClick={() => setIsRegex(!isRegex)}
-                title="Use Regular Expression"
-              >
-                <Regex size={12} />
-              </button>
+                <button
+                  type="button"
+                  className={`sidebar-action-btn ${caseSensitive ? 'active' : ''}`}
+                  style={{
+                    padding: '2px',
+                    background: caseSensitive ? 'var(--vscode-blue)' : 'transparent',
+                    color: caseSensitive ? '#ffffff' : 'inherit',
+                  }}
+                  onClick={() => setCaseSensitive(!caseSensitive)}
+                  title="大文字と小文字を区別 (Alt+C)"
+                >
+                  <CaseSensitive size={12} />
+                </button>
+                <button
+                  type="button"
+                  className={`sidebar-action-btn ${isRegex ? 'active' : ''}`}
+                  style={{
+                    padding: '2px',
+                    background: isRegex ? 'var(--vscode-blue)' : 'transparent',
+                    color: isRegex ? '#ffffff' : 'inherit',
+                  }}
+                  onClick={() => setIsRegex(!isRegex)}
+                  title="正規表現を使用 (Alt+R)"
+                >
+                  <Regex size={12} />
+                </button>
+              </div>
             </div>
           </div>
+
+          {/* Replace Input Box */}
+          {showReplace && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '17px', marginBottom: '4px' }}>
+              <input
+                type="text"
+                className="input-text"
+                style={{
+                  flex: 1,
+                  background: 'var(--vscode-bg-input)',
+                  border: '1px solid var(--vscode-border)',
+                  color: '#ffffff',
+                  fontSize: '12px',
+                }}
+                placeholder="置換..."
+                value={replaceQuery}
+                onChange={(e) => setReplaceQuery(e.target.value)}
+              />
+            </div>
+          )}
         </form>
 
-        <div style={{ marginTop: '8px', fontSize: '11px', color: 'var(--text-muted)' }}>
+        {/* Result summary */}
+        <div style={{ marginTop: '6px', fontSize: '11px', color: 'var(--vscode-text-muted)' }}>
           {isSearching ? (
-            'Searching workspace...'
+            'ワークスペースを検索中...'
           ) : results.length > 0 ? (
-            `${totalMatches} results in ${results.length} files`
+            `${results.length} 個のファイルで ${totalMatches} 件の一致`
           ) : query ? (
-            'No results found'
+            '結果は見つかりませんでした'
           ) : null}
         </div>
       </div>
 
-      <div className="sidebar-content" style={{ padding: '4px' }}>
-        {results.map((fileRes) => (
-          <div key={fileRes.path} style={{ marginBottom: '8px' }}>
-            <div
-              className="tree-node"
-              style={{ fontWeight: 600, color: 'var(--text-primary)' }}
-            >
-              <FileText size={13} color="var(--accent-primary)" />
-              <span>{fileRes.relative_path}</span>
-              <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginLeft: 'auto' }}>
-                {fileRes.matches.length}
-              </span>
-            </div>
-            {fileRes.matches.map((m, idx) => (
+      {/* Results Tree */}
+      <div className="sidebar-content" style={{ padding: '0 4px' }}>
+        {results.map((fileRes) => {
+          const isExpanded = expandedFiles[fileRes.path] !== false;
+          return (
+            <div key={fileRes.path} style={{ marginBottom: '4px' }}>
+              {/* File Row */}
               <div
-                key={idx}
                 className="tree-node"
-                style={{ paddingLeft: '24px', fontSize: '11px' }}
-                onClick={() => onOpenFileAtLine(fileRes.path, m.line_number)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontWeight: 600,
+                  fontSize: '12px',
+                  color: 'var(--vscode-text-bright)',
+                }}
+                onClick={() => toggleFileExpand(fileRes.path)}
               >
-                <span style={{ color: 'var(--accent-cyan)', marginRight: '6px' }}>
-                  {m.line_number}:
+                {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                <FileCode size={13} color="#e44d26" />
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {fileRes.relative_path || fileRes.path.split(/[\\/]/).pop()}
                 </span>
-                <span style={{ color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {m.line_content.trim()}
+                <span
+                  style={{
+                    fontSize: '10px',
+                    color: 'var(--vscode-text-muted)',
+                    marginLeft: 'auto',
+                    background: 'rgba(255,255,255,0.06)',
+                    padding: '1px 5px',
+                    borderRadius: '10px',
+                  }}
+                >
+                  {fileRes.matches.length}
                 </span>
               </div>
-            ))}
-          </div>
-        ))}
+
+              {/* Match Line Rows */}
+              {isExpanded && (
+                <div style={{ paddingLeft: '22px' }}>
+                  {fileRes.matches.map((m, idx) => (
+                    <div
+                      key={idx}
+                      className="tree-node"
+                      style={{
+                        fontSize: '11px',
+                        fontFamily: 'var(--font-mono)',
+                        color: 'var(--vscode-text-secondary)',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        height: '22px',
+                      }}
+                      onClick={() => onOpenFileAtLine(fileRes.path, m.line_number)}
+                      title={`行 ${m.line_number}: ${m.line_content}`}
+                    >
+                      <span style={{ color: 'var(--vscode-blue)', marginRight: '6px' }}>
+                        {m.line_number}:
+                      </span>
+                      <span>{m.line_content.trim()}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

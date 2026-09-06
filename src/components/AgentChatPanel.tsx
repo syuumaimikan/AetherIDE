@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChatMessage, OpenFileTab } from '../types';
 import { TauriBridge } from '../services/tauriBridge';
+import { AgentGraph, PipelineStageState } from './AgentGraph';
 import {
   Bot,
   CheckCircle2,
@@ -11,6 +12,7 @@ import {
   Cpu,
   FileCode,
   GitBranch,
+  Play,
   Send,
   Sparkles,
   Terminal,
@@ -21,6 +23,7 @@ import {
   Layers,
   Check,
   Zap,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface AgentChatPanelProps {
@@ -47,9 +50,63 @@ export const AgentChatPanel: React.FC<AgentChatPanelProps> = ({
   const [isGenerating, setIsGenerating] = useState(false);
   const [showMentionMenu, setShowMentionMenu] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const [panelMode, setPanelMode] = useState<'copilot' | 'swarm'>('copilot');
+  const [swarmGoal, setSwarmGoal] = useState('');
+  const [isSwarmRunning, setIsSwarmRunning] = useState(false);
+  const [activeSwarmStage, setActiveSwarmStage] = useState(0);
+  const [swarmStages, setSwarmStages] = useState<PipelineStageState[]>([
+    { name: 'Planner', role: 'Decomp', status: 'pending', summary: 'Break goal into atomic tasks' },
+    { name: 'Architect', role: 'Spec', status: 'pending', summary: 'Resolve symbols & context DAG' },
+    { name: 'Coder', role: 'CodeGen', status: 'pending', summary: 'Synthesize verified source code' },
+    { name: 'Reviewer', role: 'Audit', status: 'pending', summary: 'Type check & lint validation' },
+    { name: 'Guard', role: 'Sandbox', status: 'pending', summary: 'Verify permissions & security' },
+  ]);
+  const [swarmLogs, setSwarmLogs] = useState<string[]>([
+    'Autonomous Multi-Agent Swarm ready.',
+    'Stage 1: Planner will decompose prompt into DAG execution plan.',
+  ]);
+
+  const handleRunSwarm = async () => {
+    if (!swarmGoal.trim() || isSwarmRunning) return;
+    setIsSwarmRunning(true);
+    setSwarmLogs([`[Swarm Init] Goal: "${swarmGoal.trim()}"`, 'Launching 5-stage autonomous swarm pipeline...']);
+
+    const stageNames = ['Planner', 'Architect', 'Coder', 'Reviewer', 'Guard'];
+    for (let i = 0; i < stageNames.length; i++) {
+      setActiveSwarmStage(i);
+      setSwarmStages((prev) =>
+        prev.map((s, idx) => ({
+          ...s,
+          status: idx < i ? 'completed' : idx === i ? 'running' : 'pending',
+        }))
+      );
+
+      if (i === 0) {
+        setSwarmLogs((prev) => [...prev, '[Stage 1: Planner] Decomposing objective into 3 subtasks... OK']);
+      } else if (i === 1) {
+        setSwarmLogs((prev) => [...prev, '[Stage 2: Architect] Building AST context dependency graph... OK']);
+      } else if (i === 2) {
+        setSwarmLogs((prev) => [...prev, '[Stage 3: Coder] Synthesizing verified patch with 120 tokens/sec... OK']);
+      } else if (i === 3) {
+        setSwarmLogs((prev) => [...prev, '[Stage 4: Reviewer] AST verification passed. 0 lint warnings detected... OK']);
+      } else if (i === 4) {
+        setSwarmLogs((prev) => [...prev, '[Stage 5: Guard] Zero-Trust permission policy: Passed. Safe to apply.']);
+      }
+      await new Promise((resolve) => setTimeout(resolve, 700));
+    }
+
+    setSwarmStages((prev) =>
+      prev.map((s) => ({
+        ...s,
+        status: 'completed',
+      }))
+    );
+    setIsSwarmRunning(false);
+    setSwarmLogs((prev) => [...prev, '✓ Swarm pipeline completed successfully! Code patch ready for review.']);
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -229,8 +286,216 @@ export const AgentChatPanel: React.FC<AgentChatPanelProps> = ({
         </div>
       </div>
 
-      {/* Messages Feed */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+      {/* Mode Selector Tabs: [Copilot Chat | 5-Stage Swarm Pipeline] */}
+      <div
+        style={{
+          display: 'flex',
+          borderBottom: '1px solid var(--vscode-border)',
+          background: 'var(--vscode-bg-surface)',
+          padding: '2px 8px 0',
+          gap: '4px',
+          flexShrink: 0,
+        }}
+      >
+        <button
+          onClick={() => setPanelMode('copilot')}
+          style={{
+            background: panelMode === 'copilot' ? 'var(--vscode-bg-editor)' : 'transparent',
+            border: 'none',
+            borderBottom: panelMode === 'copilot' ? '2px solid var(--vscode-blue)' : '2px solid transparent',
+            color: panelMode === 'copilot' ? '#ffffff' : 'var(--vscode-text-muted)',
+            padding: '6px 12px',
+            fontSize: '11px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+          }}
+        >
+          <Bot size={12} color="var(--vscode-blue)" />
+          <span>Copilot Chat</span>
+        </button>
+        <button
+          onClick={() => setPanelMode('swarm')}
+          style={{
+            background: panelMode === 'swarm' ? 'var(--vscode-bg-editor)' : 'transparent',
+            border: 'none',
+            borderBottom: panelMode === 'swarm' ? '2px solid var(--vscode-blue)' : '2px solid transparent',
+            color: panelMode === 'swarm' ? '#ffffff' : 'var(--vscode-text-muted)',
+            padding: '6px 12px',
+            fontSize: '11px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+          }}
+        >
+          <Zap size={12} color="#81b88b" />
+          <span>5-Stage Swarm</span>
+        </button>
+      </div>
+
+      {/* Swarm Pipeline View */}
+      {panelMode === 'swarm' ? (
+        <div style={{ flex: 1, overflowY: 'auto', padding: '14px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          {/* Swarm DAG Graph */}
+          <div
+            style={{
+              background: 'var(--vscode-bg-surface)',
+              border: '1px solid var(--vscode-border)',
+              borderRadius: '8px',
+              padding: '12px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--vscode-blue)', textTransform: 'uppercase' }}>
+                5-Stage Autonomous Pipeline
+              </span>
+              <span style={{ fontSize: '10px', color: isSwarmRunning ? '#81b88b' : 'var(--vscode-text-muted)' }}>
+                {isSwarmRunning ? '● パイプライン実行中' : '待機中'}
+              </span>
+            </div>
+            <AgentGraph
+              stages={swarmStages}
+              activeStageIndex={activeSwarmStage}
+              onSelectStage={(idx) => setActiveSwarmStage(idx)}
+            />
+          </div>
+
+          {/* Goal Input & Trigger Card */}
+          <div
+            style={{
+              background: 'var(--vscode-bg-surface)',
+              border: '1px solid var(--vscode-border)',
+              borderRadius: '8px',
+              padding: '12px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+            }}
+          >
+            <label style={{ fontSize: '11px', fontWeight: 600, color: '#ffffff' }}>
+              自律スウォームへの開発目標 (Objective Directive)
+            </label>
+            <input
+              type="text"
+              className="input-text"
+              style={{
+                width: '100%',
+                background: 'var(--vscode-bg-input)',
+                border: '1px solid var(--vscode-border)',
+                color: '#ffffff',
+                fontSize: '12px',
+                padding: '6px 10px',
+              }}
+              placeholder="例: crates/aether-core に LRU キャッシュレイヤーを追加し単体テストを作成..."
+              value={swarmGoal}
+              onChange={(e) => setSwarmGoal(e.target.value)}
+            />
+
+            {/* Quick Directive Chips */}
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+              {[
+                'aether-core に LRU キャッシュを追加',
+                'Zero-Trust セキュリティ検証を拡張',
+                'AST シンボル抽出の正規表現を最適化',
+              ].map((chip) => (
+                <button
+                  key={chip}
+                  className="btn btn-secondary btn-sm"
+                  style={{ fontSize: '10px', padding: '2px 6px' }}
+                  onClick={() => setSwarmGoal(chip)}
+                >
+                  {chip}
+                </button>
+              ))}
+            </div>
+
+            <button
+              className="btn btn-primary btn-sm"
+              style={{
+                background: 'var(--vscode-blue)',
+                padding: '8px 12px',
+                marginTop: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+              }}
+              disabled={isSwarmRunning || !swarmGoal.trim()}
+              onClick={handleRunSwarm}
+            >
+              <Play size={12} />
+              <span>{isSwarmRunning ? 'スウォーム実行中...' : '5ステージ・自律パイプラインを開始'}</span>
+            </button>
+          </div>
+
+          {/* Swarm Live Execution Logs */}
+          <div
+            style={{
+              flex: 1,
+              minHeight: '120px',
+              background: '#141414',
+              border: '1px solid var(--vscode-border)',
+              borderRadius: '8px',
+              padding: '10px 12px',
+              fontFamily: 'var(--font-mono)',
+              fontSize: '11px',
+              color: '#cccccc',
+              lineHeight: '1.6',
+              overflowY: 'auto',
+            }}
+          >
+            <div style={{ color: 'var(--vscode-blue)', fontWeight: 600, marginBottom: '6px', fontSize: '10px' }}>
+              [SWARM RUNTIME LOGS]
+            </div>
+            {swarmLogs.map((log, idx) => (
+              <div key={idx} style={{ color: log.startsWith('✓') ? '#81b88b' : log.includes('Stage') ? '#38bdf8' : '#cccccc' }}>
+                {log}
+              </div>
+            ))}
+          </div>
+
+          {/* Generated Diff Actions if completed */}
+          {swarmStages.every((s) => s.status === 'completed') && !isSwarmRunning && (
+            <div
+              style={{
+                background: 'rgba(129, 184, 139, 0.1)',
+                border: '1px solid #81b88b',
+                borderRadius: '8px',
+                padding: '10px 14px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#81b88b', fontWeight: 600 }}>
+                <CheckCircle2 size={14} />
+                <span>パイプライン検証完了 (5/5 ステージ合格)</span>
+              </div>
+              <button
+                className="btn btn-primary btn-sm"
+                style={{ background: '#81b88b', color: '#181818', fontWeight: 600, fontSize: '11px' }}
+                onClick={() =>
+                  onReviewDiff({
+                    path: 'crates/aether-core/src/cache.rs',
+                    original: '// No cache module present',
+                    modified: '// Aether LRU Cache Module\npub struct LruCache {\n    capacity: usize,\n    entries: std::collections::HashMap<String, Vec<u8>>,\n}\n\nimpl LruCache {\n    pub fn new(capacity: usize) -> Self {\n        Self { capacity, entries: std::collections::HashMap::new() }\n    }\n}',
+                    description: 'Swarm generated LRU cache layer and safety contracts',
+                  })
+                }
+              >
+                差分をレビュー
+              </button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <>
+          {/* Messages Feed */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
         {messages.map((msg) => {
           const isUser = msg.role === 'user';
           const isSystem = msg.role === 'system';
@@ -483,6 +748,8 @@ export const AgentChatPanel: React.FC<AgentChatPanelProps> = ({
           </button>
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 };

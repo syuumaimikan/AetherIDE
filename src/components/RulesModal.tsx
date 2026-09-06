@@ -28,6 +28,46 @@ export const RulesModal: React.FC<RulesModalProps> = ({ isOpen, onClose }) => {
 
   const [isSaved, setIsSaved] = useState(false);
 
+  const templates = [
+    {
+      name: '総合開発規約 (Full-Stack)',
+      content: `# AETHER Full-Stack Architecture Rules
+
+## 1. Rust & Tokio
+- Use Result<T, E> propagation everywhere.
+- Use lock-free atomics and Tokio channels for inter-thread communication.
+
+## 2. React 19 Frontend
+- Strict TypeScript type safety.
+- VS Code Dark Modern theme color tokens.
+
+## 3. Autonomous Swarm
+- Decompose complex tasks into 5-stage DAG before synthesis.`,
+    },
+    {
+      name: 'Rust 高速非同期 (Tokio & Safety)',
+      content: `# Rust & High-Performance Tokio Guidelines
+
+## 1. Concurrency
+- Non-blocking I/O with Tokio tasks.
+- Zero panics in production runtime.
+
+## 2. Architecture
+- Modular workspace crates with clean boundary separation.`,
+    },
+    {
+      name: 'Zero-Trust セキュリティ (Security & Audit)',
+      content: `# Zero-Trust Guardrails Policy
+
+## 1. Host OS Protection
+- Always require user confirmation for destructive shell commands.
+- Sandboxed file reads/writes restricted to workspace directory.
+
+## 2. Audit Trail
+- Record timestamp, process ID, and policy decision for every agent action.`,
+    },
+  ];
+
   if (!isOpen) return null;
 
   const handleSave = async () => {
@@ -60,9 +100,9 @@ export const RulesModal: React.FC<RulesModalProps> = ({ isOpen, onClose }) => {
           backgroundColor: 'var(--vscode-bg-surface)',
           border: '1px solid var(--vscode-border)',
           borderRadius: '10px',
-          width: '720px',
+          width: '740px',
           maxWidth: '95vw',
-          maxHeight: '85vh',
+          maxHeight: '88vh',
           display: 'flex',
           flexDirection: 'column',
           boxShadow: '0 24px 64px rgba(0, 0, 0, 0.8)',
@@ -97,6 +137,35 @@ export const RulesModal: React.FC<RulesModalProps> = ({ isOpen, onClose }) => {
           </button>
         </div>
 
+        {/* Template Quick Chips Bar */}
+        <div
+          style={{
+            padding: '8px 20px',
+            borderBottom: '1px solid var(--vscode-border)',
+            background: 'var(--vscode-bg-surface)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            flexWrap: 'wrap',
+          }}
+        >
+          <span style={{ fontSize: '11px', color: 'var(--vscode-text-muted)', fontWeight: 600 }}>
+            プリセット規約:
+          </span>
+          {templates.map((tpl) => (
+            <button
+              key={tpl.name}
+              className="btn btn-secondary btn-sm"
+              style={{ fontSize: '11px', padding: '2px 8px' }}
+              onClick={() => setRulesContent(tpl.content)}
+              title="このテンプレートを適用"
+            >
+              <Sparkles size={11} color="var(--vscode-blue)" />
+              <span>{tpl.name}</span>
+            </button>
+          ))}
+        </div>
+
         {/* Content */}
         <div style={{ padding: '16px 20px', flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <div style={{ fontSize: '12px', color: 'var(--vscode-text-secondary)' }}>
@@ -108,7 +177,7 @@ export const RulesModal: React.FC<RulesModalProps> = ({ isOpen, onClose }) => {
             onChange={(e) => setRulesContent(e.target.value)}
             style={{
               flex: 1,
-              minHeight: '320px',
+              minHeight: '300px',
               padding: '12px',
               borderRadius: '6px',
               background: 'var(--vscode-bg-input)',

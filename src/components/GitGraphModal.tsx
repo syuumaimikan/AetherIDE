@@ -11,17 +11,24 @@ import {
   FileCode,
   CheckCircle2,
   Tag,
+  Search,
+  Copy,
+  Check,
+  Eye,
 } from 'lucide-react';
 
 interface GitGraphModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onPreviewDiff?: (filePath: string, staged: boolean) => void;
 }
 
-export const GitGraphModal: React.FC<GitGraphModalProps> = ({ isOpen, onClose }) => {
+export const GitGraphModal: React.FC<GitGraphModalProps> = ({ isOpen, onClose, onPreviewDiff }) => {
   const [commits, setCommits] = useState<GitCommitInfo[]>([]);
   const [selectedCommit, setSelectedCommit] = useState<GitCommitInfo | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [copiedHash, setCopiedHash] = useState<string | null>(null);
 
   const loadCommitHistory = async () => {
     setIsLoading(true);
@@ -163,6 +170,28 @@ export const GitGraphModal: React.FC<GitGraphModalProps> = ({ isOpen, onClose })
           </div>
         </div>
 
+        {/* Search Bar for Commits */}
+        <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--vscode-border)', background: 'var(--vscode-bg-surface)' }}>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <Search size={13} style={{ position: 'absolute', left: '10px', color: 'var(--vscode-text-muted)' }} />
+            <input
+              type="text"
+              className="input-text"
+              style={{
+                width: '100%',
+                paddingLeft: '30px',
+                background: 'var(--vscode-bg-input)',
+                border: '1px solid var(--vscode-border)',
+                color: '#ffffff',
+                fontSize: '11px',
+              }}
+              placeholder="コミットメッセージ、作成者、ハッシュで検索..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+        </div>
+
         {/* Main Body: Left Commit List with Graph Node, Right Commit Details */}
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
           {/* Commit List (Left 60%) */}
@@ -174,79 +203,102 @@ export const GitGraphModal: React.FC<GitGraphModalProps> = ({ isOpen, onClose })
               padding: '8px',
             }}
           >
-            {commits.map((c, idx) => {
-              const isSelected = selectedCommit?.hash === c.hash;
-              return (
-                <div
-                  key={c.hash}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    padding: '8px 12px',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    background: isSelected ? 'rgba(0, 120, 212, 0.18)' : 'transparent',
-                    border: isSelected ? '1px solid var(--vscode-blue)' : '1px solid transparent',
-                    marginBottom: '4px',
-                  }}
-                  onClick={() => setSelectedCommit(c)}
-                >
-                  {/* Graph Node Dot & Line */}
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '16px' }}>
-                    <div
-                      style={{
-                        width: '10px',
-                        height: '10px',
-                        borderRadius: '50%',
-                        backgroundColor: idx === 0 ? 'var(--vscode-blue)' : '#81b88b',
-                        boxShadow: idx === 0 ? '0 0 8px var(--vscode-blue)' : 'none',
-                      }}
-                    />
-                  </div>
-
-                  {/* Commit Text */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div
-                      style={{
-                        fontWeight: 600,
-                        fontSize: '12px',
-                        color: isSelected ? '#ffffff' : 'var(--vscode-text)',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {c.message}
-                    </div>
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        fontSize: '11px',
-                        color: 'var(--vscode-text-muted)',
-                        marginTop: '3px',
-                      }}
-                    >
-                      <span
+            {commits
+              .filter(
+                (c) =>
+                  c.message.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  c.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  c.hash.toLowerCase().includes(searchQuery.toLowerCase())
+              )
+              .map((c, idx) => {
+                const isSelected = selectedCommit?.hash === c.hash;
+                return (
+                  <div
+                    key={c.hash}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '8px 12px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      background: isSelected ? 'rgba(0, 120, 212, 0.18)' : 'transparent',
+                      border: isSelected ? '1px solid var(--vscode-blue)' : '1px solid transparent',
+                      marginBottom: '4px',
+                    }}
+                    onClick={() => setSelectedCommit(c)}
+                  >
+                    {/* Graph Node Dot & Line */}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '16px' }}>
+                      <div
                         style={{
-                          fontFamily: 'var(--font-mono)',
-                          color: '#38bdf8',
-                          background: 'rgba(56, 189, 248, 0.1)',
-                          padding: '1px 5px',
-                          borderRadius: '3px',
+                          width: '10px',
+                          height: '10px',
+                          borderRadius: '50%',
+                          backgroundColor: idx === 0 ? 'var(--vscode-blue)' : '#81b88b',
+                          boxShadow: idx === 0 ? '0 0 8px var(--vscode-blue)' : 'none',
+                        }}
+                      />
+                    </div>
+
+                    {/* Commit Text */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
+                        {idx === 0 && (
+                          <span
+                            style={{
+                              fontSize: '9px',
+                              background: 'var(--vscode-blue)',
+                              color: '#ffffff',
+                              padding: '1px 5px',
+                              borderRadius: '3px',
+                              fontWeight: 600,
+                            }}
+                          >
+                            HEAD -&gt; master
+                          </span>
+                        )}
+                        <span
+                          style={{
+                            fontWeight: 600,
+                            fontSize: '12px',
+                            color: isSelected ? '#ffffff' : 'var(--vscode-text)',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {c.message}
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px',
+                          fontSize: '11px',
+                          color: 'var(--vscode-text-muted)',
+                          marginTop: '3px',
                         }}
                       >
-                        {c.hash}
-                      </span>
-                      <span>{c.author}</span>
-                      <span>{c.date}</span>
+                        <span
+                          style={{
+                            fontFamily: 'var(--font-mono)',
+                            color: '#38bdf8',
+                            background: 'rgba(56, 189, 248, 0.1)',
+                            padding: '1px 5px',
+                            borderRadius: '3px',
+                          }}
+                        >
+                          {c.hash}
+                        </span>
+                        <span>{c.author}</span>
+                        <span>{c.date}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
           </div>
 
           {/* Commit Inspector (Right 40%) */}
@@ -272,10 +324,24 @@ export const GitGraphModal: React.FC<GitGraphModalProps> = ({ isOpen, onClose })
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '12px', color: 'var(--vscode-text-secondary)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Tag size={13} color="var(--vscode-text-muted)" />
-                    <span>ハッシュ: <code style={{ color: '#38bdf8' }}>{selectedCommit.hash}</code></span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px', color: 'var(--vscode-text-secondary)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Tag size={13} color="var(--vscode-text-muted)" />
+                      <span>ハッシュ: <code style={{ color: '#38bdf8' }}>{selectedCommit.hash}</code></span>
+                    </div>
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      style={{ fontSize: '10px', padding: '1px 6px' }}
+                      onClick={() => {
+                        navigator.clipboard.writeText(selectedCommit.hash);
+                        setCopiedHash(selectedCommit.hash);
+                        setTimeout(() => setCopiedHash(null), 1500);
+                      }}
+                    >
+                      {copiedHash === selectedCommit.hash ? <Check size={11} color="#81b88b" /> : <Copy size={11} />}
+                      <span>{copiedHash === selectedCommit.hash ? 'コピー完了' : 'コピー'}</span>
+                    </button>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <User size={13} color="var(--vscode-text-muted)" />
@@ -296,6 +362,17 @@ export const GitGraphModal: React.FC<GitGraphModalProps> = ({ isOpen, onClose })
                     <span>全 11 クレートのユニットテスト & Doc-tests パス</span>
                   </div>
                 </div>
+
+                {onPreviewDiff && (
+                  <button
+                    className="btn btn-primary btn-sm"
+                    style={{ background: 'var(--vscode-blue)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '6px' }}
+                    onClick={() => onPreviewDiff('/src/main.rs', false)}
+                  >
+                    <Eye size={12} />
+                    <span>コミット変更差分をプレビュー</span>
+                  </button>
+                )}
               </>
             ) : (
               <div style={{ color: 'var(--vscode-text-muted)', fontStyle: 'italic', fontSize: '12px' }}>

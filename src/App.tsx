@@ -1001,6 +1001,20 @@ export const App: React.FC = () => {
       <GitGraphModal
         isOpen={isGitGraphOpen}
         onClose={() => setIsGitGraphOpen(false)}
+        onPreviewDiff={async (filePath, staged) => {
+          try {
+            const diff = await TauriBridge.getFileDiff(filePath, staged);
+            setActiveReviewDiff({
+              path: filePath,
+              original: '',
+              modified: diff,
+              description: `Git Commit Diff: ${filePath}`,
+            });
+            setIsGitGraphOpen(false);
+          } catch (e) {
+            console.error('Failed to get diff for preview:', e);
+          }
+        }}
       />
     </div>
   );

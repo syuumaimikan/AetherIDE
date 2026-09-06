@@ -143,7 +143,7 @@ AETHER enforces strict guardrails before any system or filesystem modification:
    npm install
    ```
 
-3. **Run Web Dev Server**:
+3. **Run Web Dev Server (Browser preview)**:
    ```bash
    npm run dev
    ```
@@ -151,13 +151,11 @@ AETHER enforces strict guardrails before any system or filesystem modification:
 
 4. **Launch Tauri Desktop Application**:
    ```bash
-   # If `npm run dev` is already running:
-   cargo tauri dev --no-dev-server
-   # or `npm run tauri:dev`
-
-   # If starting from scratch (Tauri launches Vite automatically):
    cargo tauri dev
+   # or
+   npm run tauri:dev
    ```
+   *Tauri automatically starts the Vite dev server and opens the native GPU-accelerated desktop window.*
 
 ### Running Test Suite
 

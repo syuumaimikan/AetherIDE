@@ -8,7 +8,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "tauri:dev": "cargo tauri dev --no-dev-server"
+    "tauri:dev": "cargo tauri dev"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",

@@ -22,6 +22,7 @@ import { TauriBridge } from '../services/tauriBridge';
 interface EditorAreaProps {
   openTabs: OpenFileTab[];
   activeTabIndex: number;
+  targetLine?: { line: number; timestamp: number } | null;
   onSelectTab: (index: number) => void;
   onCloseTab: (index: number) => void;
   onContentChange: (newContent: string) => void;
@@ -34,6 +35,7 @@ interface EditorAreaProps {
 export const EditorArea: React.FC<EditorAreaProps> = ({
   openTabs,
   activeTabIndex,
+  targetLine,
   onSelectTab,
   onCloseTab,
   onContentChange,
@@ -54,6 +56,14 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
   const providerDisposableRef = useRef<any>(null);
 
   const activeTab = openTabs[activeTabIndex];
+
+  useEffect(() => {
+    if (targetLine && editorRef.current) {
+      editorRef.current.revealLineInCenter(targetLine.line);
+      editorRef.current.setPosition({ lineNumber: targetLine.line, column: 1 });
+      editorRef.current.focus();
+    }
+  }, [targetLine]);
 
   const getMonacoLanguage = (path: string): string => {
     const p = path.toLowerCase();

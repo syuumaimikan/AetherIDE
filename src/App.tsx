@@ -48,6 +48,7 @@ export const App: React.FC = () => {
   const [isKeybindingsOpen, setIsKeybindingsOpen] = useState(false);
   const [isRulesOpen, setIsRulesOpen] = useState(false);
   const [isGitGraphOpen, setIsGitGraphOpen] = useState(false);
+  const [editorTargetLine, setEditorTargetLine] = useState<{ line: number; timestamp: number } | null>(null);
   const [rightPanelTab, setRightPanelTab] = useState<'swarm' | 'copilot'>('swarm');
   const [activeReviewDiff, setActiveReviewDiff] = useState<{
     path: string;
@@ -405,6 +406,7 @@ export const App: React.FC = () => {
             rootNode={fileTree}
             workspaceName={workspaceInfo?.name || 'AetherIDE'}
             activeFilePath={openTabs[activeTabIndex]?.path}
+            activeFileContent={openTabs[activeTabIndex]?.content}
             onSelectFile={handleOpenFile}
             onCreateFile={async (parent, name) => {
               const full = `${parent}/${name}`.replace('//', '/');
@@ -429,6 +431,7 @@ export const App: React.FC = () => {
               setFileTree(tree);
             }}
             onOpenFolder={handleOpenFolder}
+            onJumpToLine={(line) => setEditorTargetLine({ line, timestamp: Date.now() })}
           />
         )}
 
@@ -483,6 +486,7 @@ export const App: React.FC = () => {
             }
             onOpenFileAtLine={(path, line) => {
               handleOpenFile(path);
+              setEditorTargetLine({ line, timestamp: Date.now() });
             }}
           />
         )}
@@ -513,6 +517,7 @@ export const App: React.FC = () => {
               <EditorArea
                 openTabs={openTabs}
                 activeTabIndex={activeTabIndex}
+                targetLine={editorTargetLine}
                 onSelectTab={setActiveTabIndex}
                 onCloseTab={handleCloseTab}
                 onContentChange={handleContentChange}
@@ -540,7 +545,10 @@ export const App: React.FC = () => {
               }}
               onInput={(id, data) => TauriBridge.writeTerminalInput(id, data)}
               onClosePanel={() => setIsTerminalOpen(false)}
-              onOpenFileAtLine={(path, _line) => handleOpenFile(path)}
+              onOpenFileAtLine={(path, line) => {
+                handleOpenFile(path);
+                if (line) setEditorTargetLine({ line, timestamp: Date.now() });
+              }}
             />
           )}
         </div>

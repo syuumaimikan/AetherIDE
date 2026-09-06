@@ -25,18 +25,74 @@ interface FileExplorerProps {
   rootNode: FileNode | null;
   workspaceName?: string;
   activeFilePath?: string;
+  activeFileContent?: string;
   onSelectFile: (path: string) => void;
   onCreateFile: (parentPath: string, name: string) => void;
   onCreateFolder: (parentPath: string, name: string) => void;
   onDeletePath: (path: string) => void;
   onRefresh: () => void;
   onOpenFolder?: () => void;
+  onJumpToLine?: (line: number) => void;
 }
 
 interface ContextMenuState {
   x: number;
   y: number;
   node: FileNode;
+}
+
+interface OutlineSymbol {
+  name: string;
+  kind: 'function' | 'struct' | 'interface' | 'variable' | 'class';
+  line: number;
+}
+
+function extractSymbols(content?: string): OutlineSymbol[] {
+  if (!content) return [];
+  const lines = content.split('\n');
+  const symbols: OutlineSymbol[] = [];
+
+  lines.forEach((lineText, idx) => {
+    const lineNum = idx + 1;
+    const trimmed = lineText.trim();
+    if (!trimmed || trimmed.startsWith('//') || trimmed.startsWith('#') || trimmed.startsWith('/*')) return;
+
+    // Rust
+    if (
+      trimmed.startsWith('fn ') ||
+      trimmed.startsWith('pub fn ') ||
+      trimmed.startsWith('async fn ') ||
+      trimmed.startsWith('pub async fn ')
+    ) {
+      const match = trimmed.match(/(?:pub\s+)?(?:async\s+)?fn\s+([a-zA-Z0-9_]+)/);
+      if (match) symbols.push({ name: match[1], kind: 'function', line: lineNum });
+    } else if (trimmed.startsWith('struct ') || trimmed.startsWith('pub struct ')) {
+      const match = trimmed.match(/(?:pub\s+)?struct\s+([a-zA-Z0-9_]+)/);
+      if (match) symbols.push({ name: match[1], kind: 'struct', line: lineNum });
+    } else if (trimmed.startsWith('enum ') || trimmed.startsWith('pub enum ')) {
+      const match = trimmed.match(/(?:pub\s+)?enum\s+([a-zA-Z0-9_]+)/);
+      if (match) symbols.push({ name: match[1], kind: 'struct', line: lineNum });
+    } else if (trimmed.startsWith('impl ') || trimmed.startsWith('impl<')) {
+      const match = trimmed.match(/impl(?:<[^>]+>)?\s+([a-zA-Z0-9_]+)/);
+      if (match) symbols.push({ name: `impl ${match[1]}`, kind: 'struct', line: lineNum });
+    }
+    // TypeScript / JavaScript
+    else if (trimmed.startsWith('export const ') || trimmed.startsWith('const ')) {
+      const match = trimmed.match(/(?:export\s+)?const\s+([a-zA-Z0-9_]+)/);
+      if (match) symbols.push({ name: match[1], kind: 'variable', line: lineNum });
+    } else if (trimmed.startsWith('export function ') || trimmed.startsWith('function ')) {
+      const match = trimmed.match(/(?:export\s+)?function\s+([a-zA-Z0-9_]+)/);
+      if (match) symbols.push({ name: match[1], kind: 'function', line: lineNum });
+    } else if (trimmed.startsWith('export interface ') || trimmed.startsWith('interface ')) {
+      const match = trimmed.match(/(?:export\s+)?interface\s+([a-zA-Z0-9_]+)/);
+      if (match) symbols.push({ name: match[1], kind: 'interface', line: lineNum });
+    } else if (trimmed.startsWith('export class ') || trimmed.startsWith('class ')) {
+      const match = trimmed.match(/(?:export\s+)?class\s+([a-zA-Z0-9_]+)/);
+      if (match) symbols.push({ name: match[1], kind: 'class', line: lineNum });
+    }
+  });
+
+  return symbols;
 }
 
 const FileTreeNode: React.FC<{
@@ -169,17 +225,24 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
   rootNode,
   workspaceName = 'AETHERIDE',
   activeFilePath,
+  activeFileContent,
   onSelectFile,
   onCreateFile,
   onCreateFolder,
   onDeletePath,
   onRefresh,
   onOpenFolder,
+  onJumpToLine,
 }) => {
   const [isCreatingFile, setIsCreatingFile] = useState(false);
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [newPathName, setNewPathName] = useState('');
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+
+  // Accordion Sections
+  const [isFilesOpen, setIsFilesOpen] = useState(true);
+  const [isOutlineOpen, setIsOutlineOpen] = useState(true);
+  const [isTimelineOpen, setIsTimelineOpen] = useState(false);
 
   useEffect(() => {
     const handleCloseContext = () => setContextMenu(null);
@@ -211,9 +274,25 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
   };
 
   const displayName = workspaceName.toUpperCase();
+  const symbols = extractSymbols(activeFileContent);
+
+  const getSymbolIcon = (kind: OutlineSymbol['kind']) => {
+    switch (kind) {
+      case 'function':
+        return <span style={{ color: '#a855f7', fontWeight: 'bold', fontSize: '11px' }}>ƒ</span>;
+      case 'struct':
+      case 'class':
+        return <span style={{ color: '#38bdf8', fontWeight: 'bold', fontSize: '11px' }}>S</span>;
+      case 'interface':
+        return <span style={{ color: '#81b88b', fontWeight: 'bold', fontSize: '11px' }}>I</span>;
+      case 'variable':
+      default:
+        return <span style={{ color: '#facc15', fontWeight: 'bold', fontSize: '11px' }}>v</span>;
+    }
+  };
 
   return (
-    <div className="left-sidebar" style={{ position: 'relative' }}>
+    <div className="left-sidebar" style={{ position: 'relative', display: 'flex', flexDirection: 'column' }}>
       {/* VS Code Explorer Header */}
       <div className="sidebar-header">
         <span style={{ fontWeight: 700, fontSize: '11px', letterSpacing: '0.05em' }}>
@@ -250,9 +329,31 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
         </div>
       </div>
 
-      <div className="sidebar-content">
+      <div className="sidebar-content" style={{ flex: 1, overflowY: 'auto' }}>
+        {/* Workspace Files Section Header */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            padding: '4px 8px',
+            fontSize: '11px',
+            fontWeight: 700,
+            cursor: 'pointer',
+            background: 'var(--vscode-bg-titlebar)',
+            borderBottom: '1px solid var(--vscode-border)',
+            userSelect: 'none',
+            color: '#ffffff',
+          }}
+          onClick={() => setIsFilesOpen(!isFilesOpen)}
+        >
+          <span style={{ marginRight: '4px', opacity: 0.8 }}>
+            {isFilesOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+          </span>
+          <span>{displayName} (ワークスペース)</span>
+        </div>
+
         {/* Inline Create Input */}
-        {(isCreatingFile || isCreatingFolder) && (
+        {isFilesOpen && (isCreatingFile || isCreatingFolder) && (
           <form onSubmit={handleCreateSubmit} style={{ padding: '4px 12px' }}>
             <input
               type="text"
@@ -278,46 +379,151 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
         )}
 
         {/* Tree Content */}
-        {rootNode ? (
-          <div style={{ padding: '4px 0' }}>
-            <FileTreeNode
-              node={rootNode}
-              depth={0}
-              activeFilePath={activeFilePath}
-              onSelectFile={onSelectFile}
-              onDeletePath={onDeletePath}
-              onContextMenu={handleContextMenu}
-            />
-          </div>
-        ) : (
-          <div
-            style={{
-              padding: '24px 16px',
-              textAlign: 'center',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '12px',
-            }}
-          >
-            <FolderTree size={36} color="var(--vscode-text-muted)" opacity={0.6} />
-            <div style={{ fontSize: '12px', color: 'var(--vscode-text-secondary)' }}>
-              フォルダーが開かれていません
+        {isFilesOpen &&
+          (rootNode ? (
+            <div style={{ padding: '4px 0' }}>
+              <FileTreeNode
+                node={rootNode}
+                depth={0}
+                activeFilePath={activeFilePath}
+                onSelectFile={onSelectFile}
+                onDeletePath={onDeletePath}
+                onContextMenu={handleContextMenu}
+              />
             </div>
-            {onOpenFolder && (
-              <button
-                className="btn btn-primary btn-sm"
-                onClick={onOpenFolder}
-                style={{
-                  width: '100%',
-                  background: 'var(--vscode-blue)',
-                  color: '#ffffff',
-                  padding: '6px 12px',
-                }}
-              >
-                フォルダーを開く
-              </button>
+          ) : (
+            <div
+              style={{
+                padding: '24px 16px',
+                textAlign: 'center',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '12px',
+              }}
+            >
+              <FolderTree size={36} color="var(--vscode-text-muted)" opacity={0.6} />
+              <div style={{ fontSize: '12px', color: 'var(--vscode-text-secondary)' }}>
+                フォルダーが開かれていません
+              </div>
+              {onOpenFolder && (
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={onOpenFolder}
+                  style={{
+                    width: '100%',
+                    background: 'var(--vscode-blue)',
+                    color: '#ffffff',
+                    padding: '6px 12px',
+                  }}
+                >
+                  フォルダーを開く
+                </button>
+              )}
+            </div>
+          ))}
+
+        {/* OUTLINE (アウトライン) Accordion */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '4px 8px',
+            fontSize: '11px',
+            fontWeight: 700,
+            cursor: 'pointer',
+            background: 'var(--vscode-bg-titlebar)',
+            borderTop: '1px solid var(--vscode-border)',
+            borderBottom: '1px solid var(--vscode-border)',
+            userSelect: 'none',
+            color: '#ffffff',
+          }}
+          onClick={() => setIsOutlineOpen(!isOutlineOpen)}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ opacity: 0.8 }}>
+              {isOutlineOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+            </span>
+            <span>アウトライン (OUTLINE)</span>
+          </div>
+          {symbols.length > 0 && (
+            <span style={{ fontSize: '10px', color: 'var(--vscode-text-muted)' }}>
+              {symbols.length} シンボル
+            </span>
+          )}
+        </div>
+
+        {isOutlineOpen && (
+          <div style={{ padding: '4px 0', maxHeight: '180px', overflowY: 'auto' }}>
+            {symbols.length > 0 ? (
+              symbols.map((sym, idx) => (
+                <div
+                  key={idx}
+                  className="tree-node"
+                  style={{
+                    paddingLeft: '16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    fontSize: '12px',
+                    height: '22px',
+                    cursor: 'pointer',
+                  }}
+                  onClick={() => onJumpToLine && onJumpToLine(sym.line)}
+                >
+                  <div style={{ width: '14px', textAlign: 'center' }}>
+                    {getSymbolIcon(sym.kind)}
+                  </div>
+                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {sym.name}
+                  </span>
+                  <span style={{ fontSize: '10px', color: 'var(--vscode-text-muted)', paddingRight: '8px' }}>
+                    :{sym.line}
+                  </span>
+                </div>
+              ))
+            ) : (
+              <div style={{ padding: '8px 16px', fontSize: '11px', color: 'var(--vscode-text-muted)', fontStyle: 'italic' }}>
+                シンボルが見つかりません
+              </div>
             )}
+          </div>
+        )}
+
+        {/* TIMELINE (タイムライン) Accordion */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            padding: '4px 8px',
+            fontSize: '11px',
+            fontWeight: 700,
+            cursor: 'pointer',
+            background: 'var(--vscode-bg-titlebar)',
+            borderTop: '1px solid var(--vscode-border)',
+            borderBottom: '1px solid var(--vscode-border)',
+            userSelect: 'none',
+            color: '#ffffff',
+          }}
+          onClick={() => setIsTimelineOpen(!isTimelineOpen)}
+        >
+          <span style={{ marginRight: '4px', opacity: 0.8 }}>
+            {isTimelineOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+          </span>
+          <span>タイムライン (TIMELINE)</span>
+        </div>
+
+        {isTimelineOpen && (
+          <div style={{ padding: '6px 16px', fontSize: '11px', color: 'var(--vscode-text-secondary)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <GitBranch size={12} color="var(--vscode-blue)" />
+              <span>Git: 最後のコミット</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <RefreshCw size={12} color="#81b88b" />
+              <span>ローカル履歴 (Auto-saved)</span>
+            </div>
           </div>
         )}
       </div>

@@ -169,6 +169,28 @@ pub async fn list_branches(state: State<'_, AppState>) -> Result<Vec<String>, St
     gm.list_branches().await.map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+pub async fn checkout_branch(state: State<'_, AppState>, branch_name: String) -> Result<(), String> {
+    let gm = state.git_manager.read().await;
+    gm.checkout_branch(&branch_name).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn create_branch(state: State<'_, AppState>, branch_name: String) -> Result<(), String> {
+    let gm = state.git_manager.read().await;
+    gm.create_branch(&branch_name).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn get_file_diff(
+    state: State<'_, AppState>,
+    path: String,
+    staged: Option<bool>,
+) -> Result<String, String> {
+    let gm = state.git_manager.read().await;
+    gm.get_file_diff(&path, staged.unwrap_or(false)).await.map_err(|e| e.to_string())
+}
+
 // 4. Search Commands
 #[tauri::command]
 pub async fn search_content(

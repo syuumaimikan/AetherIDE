@@ -244,7 +244,23 @@ async function mockInvoke<T>(cmd: string, args?: Record<string, any>): Promise<T
       return 'a4f89d1' as unknown as T;
 
     case 'get_git_diff':
-      return `diff --git a/src/main.rs b/src/main.rs\n--- a/src/main.rs\n+++ b/src/main.rs\n@@ -1,4 +1,5 @@\n+// Aether Autonomous Core\n fn main() {\n-    println!("Old");\n+    println!("New Aether Engine");\n }` as unknown as T;
+    case 'get_file_diff':
+      return `diff --git a/src/main.rs b/src/main.rs
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -1,4 +1,5 @@
++// Aether Autonomous Core
+ fn main() {
+-    println!("Old");
++    println!("New Aether Engine");
+ }` as unknown as T;
+
+    case 'list_branches':
+      return ['master', 'feature/agent-os', 'develop'] as unknown as T;
+
+    case 'checkout_branch':
+    case 'create_branch':
+      return undefined as unknown as T;
 
     case 'list_terminal_sessions':
       return mockTerminalSessions as unknown as T;
@@ -557,6 +573,13 @@ export const TauriBridge = {
   unstageFile: (path: string) => invokeTauri<void>('unstage_file', { path }),
   gitCommit: (message: string) => invokeTauri<string>('git_commit', { message }),
   getGitDiff: (staged: boolean) => invokeTauri<string>('get_git_diff', { staged }),
+  getFileDiff: (path: string, staged = false) =>
+    invokeTauri<string>('get_file_diff', { path, staged }),
+  listBranches: () => invokeTauri<string[]>('list_branches'),
+  checkoutBranch: (branchName: string) =>
+    invokeTauri<void>('checkout_branch', { branchName }),
+  createBranch: (branchName: string) =>
+    invokeTauri<void>('create_branch', { branchName }),
 
   // Search
   searchContent: (query: string, isRegex = false, caseSensitive = false) =>

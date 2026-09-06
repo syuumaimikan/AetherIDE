@@ -30,6 +30,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { AgentOsCockpit } from './components/AgentOsCockpit';
 import { AgentChatPanel } from './components/AgentChatPanel';
 import { DiffReviewModal } from './components/DiffReviewModal';
+import { KeybindingsModal } from './components/KeybindingsModal';
 import { Bot, GitBranch, MessageSquare, Shield, Sparkles } from 'lucide-react';
 
 export const App: React.FC = () => {
@@ -39,6 +40,7 @@ export const App: React.FC = () => {
   const [isTerminalOpen, setIsTerminalOpen] = useState(true);
   const [isCommandCenterOpen, setIsCommandCenterOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isKeybindingsOpen, setIsKeybindingsOpen] = useState(false);
   const [rightPanelTab, setRightPanelTab] = useState<'swarm' | 'copilot'>('swarm');
   const [activeReviewDiff, setActiveReviewDiff] = useState<{
     path: string;
@@ -125,15 +127,52 @@ export const App: React.FC = () => {
   // Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Escape closes open modals
+      if (e.key === 'Escape') {
+        setIsCommandCenterOpen(false);
+        setIsSettingsOpen(false);
+        setIsKeybindingsOpen(false);
+        setActiveReviewDiff(null);
+        return;
+      }
+
+      // Help / Keybindings (? or F1 or Ctrl+Shift+H)
+      if (e.key === 'F1' || ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'h')) {
+        e.preventDefault();
+        setIsKeybindingsOpen((prev) => !prev);
+        return;
+      }
+
+      // 3-in-1 Workspace Modes (Ctrl+Shift+1 / 2 / 3)
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey) {
+        if (e.key === '!' || e.key === '1') {
+          e.preventDefault();
+          setAppMode('normal');
+          return;
+        } else if (e.key === '@' || e.key === '2') {
+          e.preventDefault();
+          setAppMode('agent');
+          return;
+        } else if (e.key === '#' || e.key === '3') {
+          e.preventDefault();
+          setAppMode('os');
+          return;
+        }
+      }
+
+      // Command Center / Quick Open
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
         e.preventDefault();
         setIsCommandCenterOpen(true);
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
         e.preventDefault();
         handleSaveFile();
-      } else if ((e.ctrlKey || e.metaKey) && e.key === '`') {
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === '`' || e.key.toLowerCase() === 'j')) {
         e.preventDefault();
         setIsTerminalOpen((prev) => !prev);
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        setActiveActivityTab((prev) => (prev ? (null as any) : 'explorer'));
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -278,6 +317,7 @@ export const App: React.FC = () => {
         openCommandCenter={() => setIsCommandCenterOpen(true)}
         toggleTerminal={() => setIsTerminalOpen(!isTerminalOpen)}
         onRunAutonomousTeam={() => handleRunAutonomousTeam()}
+        onOpenKeybindings={() => setIsKeybindingsOpen(true)}
       />
 
       {/* Main Workspace Layout */}
@@ -346,6 +386,19 @@ export const App: React.FC = () => {
             onRefresh={async () => {
               const s = await TauriBridge.getGitStatus();
               setGitStatus(s);
+            }}
+            onPreviewDiff={async (filePath, staged) => {
+              try {
+                const diff = await TauriBridge.getFileDiff(filePath, staged);
+                setActiveReviewDiff({
+                  path: filePath,
+                  original: '',
+                  modified: diff,
+                  description: `Git Diff (${staged ? 'Staged' : 'Working Tree'}): ${filePath}`,
+                });
+              } catch (e) {
+                console.error('Failed to get diff:', e);
+              }
             }}
           />
         )}
@@ -580,6 +633,12 @@ export const App: React.FC = () => {
           onClose={() => setActiveReviewDiff(null)}
         />
       )}
+
+      {/* Keyboard Shortcuts Help Modal */}
+      <KeybindingsModal
+        isOpen={isKeybindingsOpen}
+        onClose={() => setIsKeybindingsOpen(false)}
+      />
     </div>
   );
 };

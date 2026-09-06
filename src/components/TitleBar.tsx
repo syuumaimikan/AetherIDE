@@ -1,6 +1,6 @@
 import React from 'react';
 import { AppMode } from '../types';
-import { Bot, Cpu, Layers, Search, Sparkles, Terminal } from 'lucide-react';
+import { Bot, Cpu, Layers, Search, Sparkles, Terminal, Keyboard } from 'lucide-react';
 
 interface TitleBarProps {
   appMode: AppMode;
@@ -8,6 +8,7 @@ interface TitleBarProps {
   openCommandCenter: () => void;
   toggleTerminal: () => void;
   onRunAutonomousTeam: () => void;
+  onOpenKeybindings?: () => void;
 }
 
 export const TitleBar: React.FC<TitleBarProps> = ({
@@ -16,6 +17,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
   openCommandCenter,
   toggleTerminal,
   onRunAutonomousTeam,
+  onOpenKeybindings,
 }) => {
   return (
     <header className="titlebar">
@@ -76,10 +78,21 @@ export const TitleBar: React.FC<TitleBarProps> = ({
       </div>
 
       <div className="titlebar-right">
+        {onOpenKeybindings && (
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={onOpenKeybindings}
+            title="Keyboard Shortcuts Help (? / Ctrl+Shift+H)"
+            style={{ padding: '4px 7px' }}
+          >
+            <Keyboard size={13} />
+          </button>
+        )}
+
         <button
           className="btn btn-secondary btn-sm"
           onClick={toggleTerminal}
-          title="Toggle Terminal Dock"
+          title="Toggle Terminal Dock (Ctrl+`)"
         >
           <Terminal size={13} />
           <span>Terminal</span>

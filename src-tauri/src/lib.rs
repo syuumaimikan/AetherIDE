@@ -50,8 +50,11 @@ pub fn run() {
             unstage_file,
             git_commit,
             get_git_diff,
+            get_file_diff,
             get_git_log,
             list_branches,
+            checkout_branch,
+            create_branch,
             // Search
             search_content,
             search_files,

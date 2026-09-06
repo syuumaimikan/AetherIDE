@@ -65,6 +65,12 @@ export interface FileMatch {
   matches: SearchMatch[];
 }
 
+export interface ReplaceSummary {
+  files_modified: number;
+  matches_replaced: number;
+}
+
+
 export type AgentRole =
   | 'architect'
   | 'coder'

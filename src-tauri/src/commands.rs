@@ -5,7 +5,7 @@ use aether_ai_core::{ChatMessage, CompletionRequest, TaskType};
 use aether_core::{AgentId, TaskPriority};
 use aether_git::{GitCommitInfo, GitRepoStatus};
 use aether_permission::{AuditEntry, PermissionCategory, PermissionDecision, PermissionPolicy};
-use aether_search::{FileMatch, SearchOptions};
+use aether_search::{FileMatch, ReplaceSummary, SearchOptions};
 use aether_terminal::TerminalSessionInfo;
 use aether_workspace::{FileNode, WorkspaceInfo};
 use std::path::PathBuf;
@@ -249,16 +249,45 @@ pub async fn search_content(
     query: String,
     is_regex: Option<bool>,
     case_sensitive: Option<bool>,
+    match_whole_word: Option<bool>,
+    include_pattern: Option<String>,
+    exclude_pattern: Option<String>,
 ) -> Result<Vec<FileMatch>, String> {
     let root = state.workspace.get_root().await;
     let opts = SearchOptions {
         query,
         is_regex: is_regex.unwrap_or(false),
         case_sensitive: case_sensitive.unwrap_or(false),
-        match_whole_word: false,
-        max_results: 300,
+        match_whole_word: match_whole_word.unwrap_or(false),
+        include_pattern,
+        exclude_pattern,
+        max_results: 500,
     };
     state.search_engine.search_content(&root, &opts).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn replace_content(
+    state: State<'_, AppState>,
+    query: String,
+    replacement: String,
+    is_regex: Option<bool>,
+    case_sensitive: Option<bool>,
+    match_whole_word: Option<bool>,
+    include_pattern: Option<String>,
+    exclude_pattern: Option<String>,
+) -> Result<ReplaceSummary, String> {
+    let root = state.workspace.get_root().await;
+    let opts = SearchOptions {
+        query,
+        is_regex: is_regex.unwrap_or(false),
+        case_sensitive: case_sensitive.unwrap_or(false),
+        match_whole_word: match_whole_word.unwrap_or(false),
+        include_pattern,
+        exclude_pattern,
+        max_results: 500,
+    };
+    state.search_engine.replace_content(&root, &opts, &replacement).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

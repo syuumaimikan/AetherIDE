@@ -60,6 +60,7 @@ pub fn run() {
             create_branch,
             // Search
             search_content,
+            replace_content,
             search_files,
             // AI & Models
             list_providers,

@@ -579,13 +579,17 @@ export const App: React.FC = () => {
 
         {activeActivityTab === 'search' && (
           <SearchPanel
-            onSearch={(query, isRegex, caseSensitive) =>
-              TauriBridge.searchContent(query, isRegex, caseSensitive)
+            onSearch={(query, isRegex, caseSensitive, matchWholeWord, includePattern, excludePattern) =>
+              TauriBridge.searchContent(query, isRegex, caseSensitive, matchWholeWord, includePattern, excludePattern)
+            }
+            onReplaceAll={(query, replaceWith, isRegex, caseSensitive, matchWholeWord, includePattern, excludePattern) =>
+              TauriBridge.replaceContent(query, replaceWith, isRegex, caseSensitive, matchWholeWord, includePattern, excludePattern)
             }
             onOpenFileAtLine={(path, line) => {
               handleOpenFile(path);
               setEditorTargetLine({ line, timestamp: Date.now() });
             }}
+            onNotification={addToast}
           />
         )}
 

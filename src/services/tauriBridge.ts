@@ -12,6 +12,7 @@ import {
   NetworkCheckResult,
   OrchestratorTask,
   PermissionRequest,
+  ReplaceSummary,
   SystemStatsResult,
   TerminalSessionInfo,
   WorkspaceInfo,
@@ -293,8 +294,12 @@ async function mockInvoke<T>(cmd: string, args?: Record<string, any>): Promise<T
 
     case 'search_content': {
       const q = (args?.query || '').toLowerCase();
+      const inc = (args?.includePattern || '').toLowerCase().trim();
+      const exc = (args?.excludePattern || '').toLowerCase().trim();
       const results: FileMatch[] = [];
       for (const [path, content] of Object.entries(mockFiles)) {
+        if (inc && !path.toLowerCase().includes(inc.replace('*', ''))) continue;
+        if (exc && path.toLowerCase().includes(exc.replace('*', ''))) continue;
         const lines = content.split('\n');
         const matches = [];
         for (let i = 0; i < lines.length; i++) {
@@ -313,6 +318,24 @@ async function mockInvoke<T>(cmd: string, args?: Record<string, any>): Promise<T
         }
       }
       return results as unknown as T;
+    }
+
+    case 'replace_content': {
+      const q = args?.query || '';
+      const rep = args?.replacement || '';
+      let filesMod = 0;
+      let matchesRep = 0;
+      if (q) {
+        for (const [path, content] of Object.entries(mockFiles)) {
+          if (content.includes(q)) {
+            const count = content.split(q).length - 1;
+            mockFiles[path] = content.split(q).join(rep);
+            filesMod++;
+            matchesRep += count;
+          }
+        }
+      }
+      return { files_modified: filesMod, matches_replaced: matchesRep } as unknown as T;
     }
 
     case 'search_files': {
@@ -603,8 +626,40 @@ export const TauriBridge = {
     invokeTauri<void>('create_branch', { branchName }),
 
   // Search
-  searchContent: (query: string, isRegex = false, caseSensitive = false) =>
-    invokeTauri<FileMatch[]>('search_content', { query, isRegex, caseSensitive }),
+  searchContent: (
+    query: string,
+    isRegex = false,
+    caseSensitive = false,
+    matchWholeWord = false,
+    includePattern?: string,
+    excludePattern?: string
+  ) =>
+    invokeTauri<FileMatch[]>('search_content', {
+      query,
+      isRegex,
+      caseSensitive,
+      matchWholeWord,
+      includePattern,
+      excludePattern,
+    }),
+  replaceContent: (
+    query: string,
+    replacement: string,
+    isRegex = false,
+    caseSensitive = false,
+    matchWholeWord = false,
+    includePattern?: string,
+    excludePattern?: string
+  ) =>
+    invokeTauri<ReplaceSummary>('replace_content', {
+      query,
+      replacement,
+      isRegex,
+      caseSensitive,
+      matchWholeWord,
+      includePattern,
+      excludePattern,
+    }),
   searchFiles: (query: string, limit = 50) =>
     invokeTauri<string[]>('search_files', { query, limit }),
 

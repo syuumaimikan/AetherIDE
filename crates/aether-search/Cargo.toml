@@ -14,3 +14,7 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 regex = { workspace = true }
 walkdir = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+

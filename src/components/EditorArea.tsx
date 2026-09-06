@@ -16,6 +16,8 @@ import {
   Code2,
   SplitSquareVertical,
   Maximize2,
+  BookOpen,
+  Eye,
 } from 'lucide-react';
 import { TauriBridge } from '../services/tauriBridge';
 
@@ -31,6 +33,249 @@ interface EditorAreaProps {
   onOpenFolder?: () => void;
   onOpenCommandCenter?: () => void;
 }
+
+// Markdown Preview Component
+const MarkdownPreviewView: React.FC<{ content: string; title: string; onEditClick?: () => void }> = ({
+  content,
+  title,
+  onEditClick,
+}) => {
+  const [copied, setCopied] = useState(false);
+  const lines = content.split('\n');
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        background: 'var(--vscode-bg-editor)',
+        color: 'var(--vscode-text)',
+      }}
+    >
+      {/* Markdown Preview Header Toolbar */}
+      <div
+        style={{
+          height: '28px',
+          background: 'var(--vscode-bg-titlebar)',
+          borderBottom: '1px solid var(--vscode-border)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 12px',
+          fontSize: '11px',
+          flexShrink: 0,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Eye size={12} color="var(--vscode-blue)" />
+          <span style={{ fontWeight: 600, color: 'var(--vscode-blue)' }}>プレビュー: {title}</span>
+          <span style={{ color: 'var(--vscode-text-muted)' }}>({lines.length} 行)</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={handleCopy}
+            style={{ fontSize: '10px', padding: '1px 6px' }}
+          >
+            {copied ? 'コピー済み' : 'マークダウンをコピー'}
+          </button>
+          {onEditClick && (
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={onEditClick}
+              style={{ fontSize: '10px', padding: '1px 6px', background: 'var(--vscode-blue)' }}
+            >
+              ソースコードを編集
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Markdown Body */}
+      <div
+        style={{
+          padding: '24px 36px',
+          overflowY: 'auto',
+          flex: 1,
+          fontSize: '13px',
+          lineHeight: '1.7',
+          fontFamily: 'var(--font-sans)',
+        }}
+      >
+        {lines.map((line, idx) => {
+          const trimmed = line.trim();
+          if (trimmed.startsWith('# ')) {
+            return (
+              <h1
+                key={idx}
+                style={{
+                  fontSize: '22px',
+                  fontWeight: 700,
+                  color: '#ffffff',
+                  borderBottom: '1px solid var(--vscode-border)',
+                  paddingBottom: '6px',
+                  margin: '18px 0 12px',
+                }}
+              >
+                {trimmed.slice(2)}
+              </h1>
+            );
+          } else if (trimmed.startsWith('## ')) {
+            return (
+              <h2
+                key={idx}
+                style={{
+                  fontSize: '16px',
+                  fontWeight: 600,
+                  color: '#ffffff',
+                  borderBottom: '1px solid var(--vscode-border)',
+                  paddingBottom: '4px',
+                  margin: '16px 0 8px',
+                }}
+              >
+                {trimmed.slice(3)}
+              </h2>
+            );
+          } else if (trimmed.startsWith('### ')) {
+            return (
+              <h3
+                key={idx}
+                style={{
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  color: 'var(--vscode-blue)',
+                  margin: '14px 0 6px',
+                }}
+              >
+                {trimmed.slice(4)}
+              </h3>
+            );
+          } else if (trimmed.startsWith('> [!NOTE]') || trimmed.startsWith('> [!TIP]')) {
+            return (
+              <div
+                key={idx}
+                style={{
+                  background: 'rgba(0, 120, 212, 0.12)',
+                  borderLeft: '3px solid var(--vscode-blue)',
+                  padding: '8px 12px',
+                  borderRadius: '4px',
+                  margin: '8px 0',
+                  fontSize: '12px',
+                }}
+              >
+                {trimmed}
+              </div>
+            );
+          } else if (trimmed.startsWith('> [!WARNING]') || trimmed.startsWith('> [!CAUTION]')) {
+            return (
+              <div
+                key={idx}
+                style={{
+                  background: 'rgba(244, 63, 94, 0.12)',
+                  borderLeft: '3px solid #f43f5e',
+                  padding: '8px 12px',
+                  borderRadius: '4px',
+                  margin: '8px 0',
+                  fontSize: '12px',
+                }}
+              >
+                {trimmed}
+              </div>
+            );
+          } else if (trimmed.startsWith('> ')) {
+            return (
+              <blockquote
+                key={idx}
+                style={{
+                  borderLeft: '3px solid var(--vscode-border)',
+                  paddingLeft: '12px',
+                  margin: '6px 0',
+                  color: 'var(--vscode-text-secondary)',
+                  fontStyle: 'italic',
+                }}
+              >
+                {trimmed.slice(2)}
+              </blockquote>
+            );
+          } else if (trimmed.startsWith('- [ ] ') || trimmed.startsWith('- [x] ')) {
+            const isDone = trimmed.startsWith('- [x] ');
+            return (
+              <div
+                key={idx}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  margin: '4px 0',
+                  fontSize: '12px',
+                }}
+              >
+                <input type="checkbox" checked={isDone} readOnly style={{ accentColor: 'var(--vscode-blue)' }} />
+                <span
+                  style={{
+                    textDecoration: isDone ? 'line-through' : 'none',
+                    color: isDone ? 'var(--vscode-text-muted)' : 'inherit',
+                  }}
+                >
+                  {trimmed.slice(6)}
+                </span>
+              </div>
+            );
+          } else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+            return (
+              <li key={idx} style={{ marginLeft: '20px', margin: '3px 0' }}>
+                {trimmed.slice(2)}
+              </li>
+            );
+          } else if (trimmed.startsWith('```')) {
+            return (
+              <div
+                key={idx}
+                style={{
+                  background: 'var(--vscode-bg-surface)',
+                  border: '1px solid var(--vscode-border)',
+                  borderRadius: '4px',
+                  padding: '6px 10px',
+                  fontSize: '12px',
+                  fontFamily: 'var(--font-mono)',
+                  color: '#38bdf8',
+                  margin: '6px 0',
+                }}
+              >
+                {trimmed}
+              </div>
+            );
+          } else if (trimmed.startsWith('|')) {
+            return (
+              <div
+                key={idx}
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '11px',
+                  background: 'rgba(255,255,255,0.02)',
+                  padding: '2px 6px',
+                  borderBottom: '1px solid rgba(255,255,255,0.05)',
+                }}
+              >
+                {trimmed}
+              </div>
+            );
+          } else if (trimmed === '') {
+            return <div key={idx} style={{ height: '8px' }} />;
+          }
+          return <p key={idx} style={{ margin: '4px 0', color: 'var(--vscode-text)' }}>{line}</p>;
+        })}
+      </div>
+    </div>
+  );
+};
 
 export const EditorArea: React.FC<EditorAreaProps> = ({
   openTabs,
@@ -51,9 +296,11 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
   const [inlineAiEnabled, setInlineAiEnabled] = useState(true);
   const [pendingDiff, setPendingDiff] = useState<{ original: string; modified: string } | null>(null);
 
-  // Split View State
+  // Split & Preview View State
   const [isSplitView, setIsSplitView] = useState(false);
   const [splitTabIndex, setSplitTabIndex] = useState<number>(0);
+  const [isMarkdownPreview, setIsMarkdownPreview] = useState(false);
+  const [secondaryPreview, setSecondaryPreview] = useState(false);
 
   const editorRef = useRef<any>(null);
   const monacoRef = useRef<any>(null);
@@ -232,6 +479,17 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
 
         {openTabs.length > 0 && (
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px', paddingRight: '8px' }}>
+            {activeTab && (activeTab.path.toLowerCase().endsWith('.md') || activeTab.path.toLowerCase().endsWith('.markdown')) && (
+              <button
+                className={`btn btn-sm ${isMarkdownPreview ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setIsMarkdownPreview(!isMarkdownPreview)}
+                title="マークダウン プレビュー切替"
+                style={{ fontSize: '11px', padding: '2px 8px' }}
+              >
+                <BookOpen size={12} color={isMarkdownPreview ? '#ffffff' : 'var(--vscode-blue)'} />
+                <span>{isMarkdownPreview ? 'ソースコード' : 'プレビュー'}</span>
+              </button>
+            )}
             <button
               className={`btn btn-sm ${isSplitView ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => setIsSplitView(!isSplitView)}
@@ -442,68 +700,78 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
                   })}
               </div>
 
-              <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
-                <Editor
-                  height="100%"
-                  theme="vs-dark"
-                  language={getMonacoLanguage(activeTab.path)}
-                  value={pendingDiff ? pendingDiff.modified : activeTab.content}
-                  onChange={(val) => {
-                    if (!pendingDiff) {
-                      onContentChange(val || '');
-                    }
-                  }}
-                  onMount={handleEditorDidMount}
-                  options={{
-                    fontFamily: "'JetBrains Mono', Consolas, 'Courier New', monospace",
-                    fontSize: 13,
-                    lineHeight: 20,
-                    minimap: { enabled: !isSplitView, side: 'right' },
-                    smoothScrolling: true,
-                    cursorBlinking: 'smooth',
-                    cursorSmoothCaretAnimation: 'on',
-                    renderWhitespace: 'selection',
-                    automaticLayout: true,
-                    scrollBeyondLastLine: false,
-                    tabSize: 4,
-                    inlineSuggest: {
-                      enabled: inlineAiEnabled,
-                      mode: 'subwordSmart',
-                    },
-                  }}
-                />
-
-                {inlineAiEnabled && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      bottom: 10,
-                      right: 20,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      background: 'rgba(30, 30, 30, 0.9)',
-                      border: '1px solid rgba(0, 120, 212, 0.4)',
-                      padding: '2px 8px',
-                      borderRadius: '4px',
-                      fontSize: '11px',
-                      color: 'var(--vscode-text-secondary)',
-                      zIndex: 20,
-                      pointerEvents: 'none',
+              {isMarkdownPreview && (activeTab.path.toLowerCase().endsWith('.md') || activeTab.path.toLowerCase().endsWith('.markdown')) ? (
+                <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+                  <MarkdownPreviewView
+                    content={activeTab.content}
+                    title={activeTab.name}
+                    onEditClick={() => setIsMarkdownPreview(false)}
+                  />
+                </div>
+              ) : (
+                <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+                  <Editor
+                    height="100%"
+                    theme="vs-dark"
+                    language={getMonacoLanguage(activeTab.path)}
+                    value={pendingDiff ? pendingDiff.modified : activeTab.content}
+                    onChange={(val) => {
+                      if (!pendingDiff) {
+                        onContentChange(val || '');
+                      }
                     }}
-                  >
-                    <span
+                    onMount={handleEditorDidMount}
+                    options={{
+                      fontFamily: "'JetBrains Mono', Consolas, 'Courier New', monospace",
+                      fontSize: 13,
+                      lineHeight: 20,
+                      minimap: { enabled: !isSplitView, side: 'right' },
+                      smoothScrolling: true,
+                      cursorBlinking: 'smooth',
+                      cursorSmoothCaretAnimation: 'on',
+                      renderWhitespace: 'selection',
+                      automaticLayout: true,
+                      scrollBeyondLastLine: false,
+                      tabSize: 4,
+                      inlineSuggest: {
+                        enabled: inlineAiEnabled,
+                        mode: 'subwordSmart',
+                      },
+                    }}
+                  />
+
+                  {inlineAiEnabled && (
+                    <div
                       style={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: '50%',
-                        backgroundColor: '#81b88b',
+                        position: 'absolute',
+                        bottom: 10,
+                        right: 20,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        background: 'rgba(30, 30, 30, 0.9)',
+                        border: '1px solid rgba(0, 120, 212, 0.4)',
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        fontSize: '11px',
+                        color: 'var(--vscode-text-secondary)',
+                        zIndex: 20,
+                        pointerEvents: 'none',
                       }}
-                    />
-                    <span>Tabキーで補完確定</span>
-                  </div>
-                )}
-              </div>
+                    >
+                      <span
+                        style={{
+                          width: 6,
+                          height: 6,
+                          borderRadius: '50%',
+                          backgroundColor: '#81b88b',
+                        }}
+                      />
+                      <span>Tabキーで補完確定</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Secondary Right Editor Pane (When Split) */}
@@ -543,33 +811,54 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
                       ))}
                     </select>
                   </div>
-                  <button
-                    className="tab-close-btn"
-                    onClick={() => setIsSplitView(false)}
-                    title="分割を閉じる"
-                  >
-                    <X size={12} />
-                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {(secondaryTab.path.toLowerCase().endsWith('.md') || secondaryTab.path.toLowerCase().endsWith('.markdown')) && (
+                      <button
+                        className={`btn btn-sm ${secondaryPreview ? 'btn-primary' : 'btn-secondary'}`}
+                        onClick={() => setSecondaryPreview(!secondaryPreview)}
+                        title="マークダウン プレビュー切替"
+                        style={{ fontSize: '10px', padding: '1px 6px' }}
+                      >
+                        <BookOpen size={10} color={secondaryPreview ? '#ffffff' : 'var(--vscode-blue)'} />
+                        <span>{secondaryPreview ? 'コード' : 'プレビュー'}</span>
+                      </button>
+                    )}
+                    <button
+                      className="tab-close-btn"
+                      onClick={() => setIsSplitView(false)}
+                      title="分割を閉じる"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
                 </div>
 
                 <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
-                  <Editor
-                    height="100%"
-                    theme="vs-dark"
-                    language={getMonacoLanguage(secondaryTab.path)}
-                    value={secondaryTab.content}
-                    options={{
-                      fontFamily: "'JetBrains Mono', Consolas, 'Courier New', monospace",
-                      fontSize: 13,
-                      lineHeight: 20,
-                      minimap: { enabled: false },
-                      smoothScrolling: true,
-                      automaticLayout: true,
-                      scrollBeyondLastLine: false,
-                      tabSize: 4,
-                      readOnly: false,
-                    }}
-                  />
+                  {secondaryPreview && (secondaryTab.path.toLowerCase().endsWith('.md') || secondaryTab.path.toLowerCase().endsWith('.markdown')) ? (
+                    <MarkdownPreviewView
+                      content={secondaryTab.content}
+                      title={secondaryTab.name}
+                      onEditClick={() => setSecondaryPreview(false)}
+                    />
+                  ) : (
+                    <Editor
+                      height="100%"
+                      theme="vs-dark"
+                      language={getMonacoLanguage(secondaryTab.path)}
+                      value={secondaryTab.content}
+                      options={{
+                        fontFamily: "'JetBrains Mono', Consolas, 'Courier New', monospace",
+                        fontSize: 13,
+                        lineHeight: 20,
+                        minimap: { enabled: false },
+                        smoothScrolling: true,
+                        automaticLayout: true,
+                        scrollBeyondLastLine: false,
+                        tabSize: 4,
+                        readOnly: false,
+                      }}
+                    />
+                  )}
                 </div>
               </div>
             )}

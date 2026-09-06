@@ -49,6 +49,8 @@ pub fn run() {
             stage_file,
             stage_all,
             unstage_file,
+            unstage_all,
+            discard_changes,
             git_commit,
             get_git_diff,
             get_file_diff,

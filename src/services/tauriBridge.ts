@@ -251,6 +251,8 @@ async function mockInvoke<T>(cmd: string, args?: Record<string, any>): Promise<T
     case 'stage_file':
     case 'stage_all':
     case 'unstage_file':
+    case 'unstage_all':
+    case 'discard_changes':
       return undefined as unknown as T;
 
     case 'git_commit':
@@ -588,6 +590,8 @@ export const TauriBridge = {
   stageFile: (path: string) => invokeTauri<void>('stage_file', { path }),
   stageAll: () => invokeTauri<void>('stage_all'),
   unstageFile: (path: string) => invokeTauri<void>('unstage_file', { path }),
+  unstageAll: () => invokeTauri<void>('unstage_all'),
+  discardChanges: (path: string) => invokeTauri<void>('discard_changes', { path }),
   gitCommit: (message: string) => invokeTauri<string>('git_commit', { message }),
   getGitDiff: (staged: boolean) => invokeTauri<string>('get_git_diff', { staged }),
   getFileDiff: (path: string, staged = false) =>

@@ -185,6 +185,18 @@ pub async fn unstage_file(state: State<'_, AppState>, path: String) -> Result<()
 }
 
 #[tauri::command]
+pub async fn unstage_all(state: State<'_, AppState>) -> Result<(), String> {
+    let gm = state.git_manager.read().await;
+    gm.unstage_all().await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn discard_changes(state: State<'_, AppState>, path: String) -> Result<(), String> {
+    let gm = state.git_manager.read().await;
+    gm.discard_changes(&path).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub async fn git_commit(state: State<'_, AppState>, message: String) -> Result<String, String> {
     let gm = state.git_manager.read().await;
     gm.commit(&message).await.map_err(|e| e.to_string())

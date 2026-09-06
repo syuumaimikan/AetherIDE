@@ -145,6 +145,20 @@ impl GitManager {
         Ok(())
     }
 
+    pub async fn unstage_all(&self) -> AetherResult<()> {
+        self.run_git(&["reset", "HEAD"]).await?;
+        Ok(())
+    }
+
+    pub async fn discard_changes(&self, path: &str) -> AetherResult<()> {
+        // Try checkout first (for tracked modified files)
+        if self.run_git(&["checkout", "--", path]).await.is_err() {
+            // If it failed, it might be an untracked file, try clean
+            let _ = self.run_git(&["clean", "-f", path]).await;
+        }
+        Ok(())
+    }
+
     pub async fn commit(&self, message: &str) -> AetherResult<String> {
         self.run_git(&["commit", "-m", message]).await
     }

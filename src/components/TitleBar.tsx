@@ -30,6 +30,7 @@ interface TitleBarProps {
   onOpenKeybindings?: () => void;
   onOpenRules?: () => void;
   onOpenGitGraph?: () => void;
+  onOpenSettings?: () => void;
   onOpenFolder?: () => void;
   onOpenFile?: () => void;
   onSaveFile?: () => void;
@@ -48,6 +49,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
   onOpenKeybindings,
   onOpenRules,
   onOpenGitGraph,
+  onOpenSettings,
   onOpenFolder,
   onOpenFile,
   onSaveFile,
@@ -123,6 +125,11 @@ export const TitleBar: React.FC<TitleBarProps> = ({
                 <div className="menu-entry" onClick={() => handleItemClick(onSaveFile)}>
                   <span>名前を付けて保存...</span>
                   <span className="menu-shortcut">Ctrl+Shift+S</span>
+                </div>
+                <div className="menu-entry separator" />
+                <div className="menu-entry" onClick={() => handleItemClick(onOpenSettings)}>
+                  <span>設定 (Preferences)</span>
+                  <span className="menu-shortcut">Ctrl+,</span>
                 </div>
                 <div className="menu-entry separator" />
                 <div className="menu-entry" onClick={() => handleItemClick(() => window.close())}>
@@ -318,9 +325,18 @@ export const TitleBar: React.FC<TitleBarProps> = ({
                   <span>キーボード ショートカット</span>
                   <span className="menu-shortcut">Ctrl+K Ctrl+S</span>
                 </div>
+                <div className="menu-entry" onClick={() => handleItemClick(onOpenRules)}>
+                  <span>AI ルール設定 (.aether/rules.md)</span>
+                  <span className="menu-shortcut">Ctrl+Shift+U</span>
+                </div>
+                <div className="menu-entry" onClick={() => handleItemClick(onOpenSettings)}>
+                  <span>設定 (Preferences)</span>
+                  <span className="menu-shortcut">Ctrl+,</span>
+                </div>
                 <div className="menu-entry separator" />
-                <div className="menu-entry" onClick={() => handleItemClick()}>
-                  <span>AETHER IDE について</span>
+                <div className="menu-entry" onClick={() => handleItemClick(openCommandCenter)}>
+                  <span>すべてのコマンドを表示</span>
+                  <span className="menu-shortcut">F1</span>
                 </div>
               </div>
             )}

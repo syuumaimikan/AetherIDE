@@ -98,6 +98,7 @@ export const App: React.FC = () => {
 
   // Cursor position, Editor Settings & Toasts
   const [cursorPos, setCursorPos] = useState<{ line: number; col: number }>({ line: 1, col: 1 });
+  const [lineEnding, setLineEnding] = useState<'CRLF' | 'LF'>('CRLF');
   const [copilotInitialPrompt, setCopilotInitialPrompt] = useState<string>('');
   const [editorSettings, setEditorSettings] = useState<{
     fontSize: number;
@@ -458,6 +459,7 @@ export const App: React.FC = () => {
         onOpenKeybindings={() => setIsKeybindingsOpen(true)}
         onOpenRules={() => setIsRulesOpen(true)}
         onOpenGitGraph={() => setIsGitGraphOpen(true)}
+        onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenFolder={handleOpenFolder}
         onOpenFile={() => setIsCommandCenterOpen(true)}
         onSaveFile={handleSaveFile}
@@ -533,6 +535,21 @@ export const App: React.FC = () => {
               const s = await TauriBridge.getGitStatus();
               setGitStatus(s);
             }}
+            onUnstageAll={async () => {
+              await TauriBridge.unstageAll();
+              const s = await TauriBridge.getGitStatus();
+              setGitStatus(s);
+            }}
+            onDiscardChange={async (path) => {
+              await TauriBridge.discardChanges(path);
+              const s = await TauriBridge.getGitStatus();
+              setGitStatus(s);
+              addToast({
+                title: '変更を破棄しました',
+                message: `${path} の変更を破棄しました。`,
+                severity: 'info',
+              });
+            }}
             onCommit={async (msg) => {
               await TauriBridge.gitCommit(msg);
               const s = await TauriBridge.getGitStatus();
@@ -543,6 +560,7 @@ export const App: React.FC = () => {
               setGitStatus(s);
             }}
             onOpenGitGraph={() => setIsGitGraphOpen(true)}
+            onNotification={addToast}
             onPreviewDiff={async (filePath, staged) => {
               try {
                 const diff = await TauriBridge.getFileDiff(filePath, staged);
@@ -748,6 +766,8 @@ export const App: React.FC = () => {
       <StatusBar
         gitStatus={gitStatus}
         activeLanguage={openTabs[activeTabIndex]?.language === 'rust' ? 'Rust' : openTabs[activeTabIndex]?.language === 'typescript' ? 'TypeScript' : 'Plain Text'}
+        tabSize={editorSettings.tabSize}
+        lineEnding={lineEnding}
         cursorPos={cursorPos}
         notificationsCount={toasts.length}
         onOpenTerminal={() => setIsTerminalOpen(!isTerminalOpen)}
@@ -756,6 +776,32 @@ export const App: React.FC = () => {
         onRefreshGit={async () => {
           const s = await TauriBridge.getGitStatus();
           setGitStatus(s);
+        }}
+        onToggleTabSize={() => {
+          const sizes = [2, 4, 8];
+          const next = sizes[(sizes.indexOf(editorSettings.tabSize) + 1) % sizes.length] || 4;
+          setEditorSettings((prev) => ({ ...prev, tabSize: next }));
+          addToast({
+            title: 'インデント変更',
+            message: `タブサイズを ${next} スペースに変更しました。`,
+            severity: 'info',
+          });
+        }}
+        onToggleLineEnding={() => {
+          const next = lineEnding === 'CRLF' ? 'LF' : 'CRLF';
+          setLineEnding(next);
+          addToast({
+            title: '行末文字変更',
+            message: `行末コードを ${next} に変更しました。`,
+            severity: 'info',
+          });
+        }}
+        onSelectLanguage={() => {
+          addToast({
+            title: '言語モード',
+            message: `現在のアクティブ言語: ${openTabs[activeTabIndex]?.language || 'Rust'} (エンコード: UTF-8)`,
+            severity: 'info',
+          });
         }}
       />
 

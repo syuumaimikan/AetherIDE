@@ -1,27 +1,37 @@
 import React from 'react';
-import { GitBranch, XCircle, AlertTriangle, Bell, Sparkles, Check } from 'lucide-react';
+import { GitBranch, XCircle, AlertTriangle, Bell, Sparkles } from 'lucide-react';
 import { GitRepoStatus } from '../types';
 
 interface StatusBarProps {
   gitStatus: GitRepoStatus | null;
   activeLanguage?: string;
+  tabSize?: number;
+  lineEnding?: 'CRLF' | 'LF';
   cursorPos?: { line: number; col: number };
   notificationsCount?: number;
   onOpenTerminal?: () => void;
   onOpenKeybindings?: () => void;
   onRefreshGit?: () => void;
   onToggleNotifications?: () => void;
+  onToggleTabSize?: () => void;
+  onToggleLineEnding?: () => void;
+  onSelectLanguage?: () => void;
 }
 
 export const StatusBar: React.FC<StatusBarProps> = ({
   gitStatus,
   activeLanguage = 'Rust',
+  tabSize = 4,
+  lineEnding = 'CRLF',
   cursorPos,
   notificationsCount = 0,
   onOpenTerminal,
   onOpenKeybindings,
   onRefreshGit,
   onToggleNotifications,
+  onToggleTabSize,
+  onToggleLineEnding,
+  onSelectLanguage,
 }) => {
   return (
     <footer className="statusbar">
@@ -83,19 +93,39 @@ export const StatusBar: React.FC<StatusBarProps> = ({
           </div>
         )}
 
-        <div className="statusbar-item" title="インデントの選択">
-          <span>スペース: 4</span>
+        <div
+          className="statusbar-item"
+          title="インデントの選択 (クリックで切替)"
+          onClick={onToggleTabSize}
+          style={{ cursor: onToggleTabSize ? 'pointer' : 'default' }}
+        >
+          <span>スペース: {tabSize}</span>
         </div>
 
-        <div className="statusbar-item" title="エンコードの選択">
+        <div
+          className="statusbar-item"
+          title="エンコードの選択 (UTF-8)"
+          onClick={onSelectLanguage}
+          style={{ cursor: onSelectLanguage ? 'pointer' : 'default' }}
+        >
           <span>UTF-8</span>
         </div>
 
-        <div className="statusbar-item" title="行末文字の選択">
-          <span>CRLF</span>
+        <div
+          className="statusbar-item"
+          title="行末文字の選択 (クリックで CRLF / LF 切替)"
+          onClick={onToggleLineEnding}
+          style={{ cursor: onToggleLineEnding ? 'pointer' : 'default' }}
+        >
+          <span>{lineEnding}</span>
         </div>
 
-        <div className="statusbar-item" title="言語モードの選択">
+        <div
+          className="statusbar-item"
+          title="言語モードの選択"
+          onClick={onSelectLanguage}
+          style={{ cursor: onSelectLanguage ? 'pointer' : 'default' }}
+        >
           <span>{activeLanguage}</span>
         </div>
 

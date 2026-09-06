@@ -96,8 +96,21 @@ export const App: React.FC = () => {
   const [pendingPermissionRequest, setPendingPermissionRequest] = useState<PermissionRequest | null>(null);
   const [providers, setProviders] = useState<[string, string][]>([]);
 
-  // Cursor position & Toasts
+  // Cursor position, Editor Settings & Toasts
   const [cursorPos, setCursorPos] = useState<{ line: number; col: number }>({ line: 1, col: 1 });
+  const [copilotInitialPrompt, setCopilotInitialPrompt] = useState<string>('');
+  const [editorSettings, setEditorSettings] = useState<{
+    fontSize: number;
+    tabSize: number;
+    wordWrap: 'on' | 'off' | 'wordWrapColumn' | 'bounded';
+    minimap: boolean;
+  }>({
+    fontSize: 13,
+    tabSize: 4,
+    wordWrap: 'on',
+    minimap: true,
+  });
+
   const [toasts, setToasts] = useState<ToastNotification[]>([
     {
       id: 'toast-init',
@@ -108,6 +121,25 @@ export const App: React.FC = () => {
     },
   ]);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+
+  // Restore settings from localStorage on init
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('aether_ide_settings');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setEditorSettings((prev) => ({
+          ...prev,
+          fontSize: parsed.fontSize || prev.fontSize,
+          tabSize: parsed.tabSize || prev.tabSize,
+          wordWrap: parsed.wordWrap || prev.wordWrap,
+          minimap: parsed.minimap !== undefined ? parsed.minimap : prev.minimap,
+        }));
+      }
+    } catch (e) {
+      console.error('Failed to load settings:', e);
+    }
+  }, []);
 
   const addToast = (toast: Omit<ToastNotification, 'id' | 'timestamp'>) => {
     const id = `toast-${Date.now()}`;
@@ -577,6 +609,19 @@ export const App: React.FC = () => {
                 onOpenFolder={handleOpenFolder}
                 onOpenCommandCenter={() => setIsCommandCenterOpen(true)}
                 onCursorChange={setCursorPos}
+                fontSize={editorSettings.fontSize}
+                tabSize={editorSettings.tabSize}
+                wordWrap={editorSettings.wordWrap}
+                minimapEnabled={editorSettings.minimap}
+                onExplainSelection={(code) => {
+                  setRightPanelTab('copilot');
+                  setCopilotInitialPrompt(`以下のコードの構造・役割と最適化ポイントを解説してください：\n\`\`\`\n${code}\n\`\`\``);
+                  addToast({
+                    title: 'AI Code Explain',
+                    message: '選択コードを Copilot チャットに送信しました。',
+                    severity: 'info',
+                  });
+                }}
               />
             </>
           )}
@@ -662,6 +707,8 @@ export const App: React.FC = () => {
             {rightPanelTab === 'copilot' ? (
               <AgentChatPanel
                 activeFile={openTabs[activeTabIndex]}
+                initialPrompt={copilotInitialPrompt}
+                onClearInitialPrompt={() => setCopilotInitialPrompt('')}
                 onReviewDiff={(diff) => setActiveReviewDiff(diff)}
               />
             ) : (
@@ -879,6 +926,20 @@ export const App: React.FC = () => {
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         providers={providers}
+        onSettingsSaved={(newSettings) => {
+          setEditorSettings((prev) => ({
+            ...prev,
+            fontSize: newSettings.fontSize || prev.fontSize,
+            tabSize: newSettings.tabSize || prev.tabSize,
+            wordWrap: newSettings.wordWrap || prev.wordWrap,
+            minimap: newSettings.minimap !== undefined ? newSettings.minimap : prev.minimap,
+          }));
+          addToast({
+            title: '設定を保存しました',
+            message: 'エディターとAI環境設定を更新しました。',
+            severity: 'success',
+          });
+        }}
       />
 
       {/* Permission Confirmation Modal */}

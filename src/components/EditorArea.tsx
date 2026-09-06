@@ -36,6 +36,11 @@ interface EditorAreaProps {
   onOpenFolder?: () => void;
   onOpenCommandCenter?: () => void;
   onCursorChange?: (pos: { line: number; col: number }) => void;
+  fontSize?: number;
+  tabSize?: number;
+  wordWrap?: 'on' | 'off' | 'wordWrapColumn' | 'bounded';
+  minimapEnabled?: boolean;
+  onExplainSelection?: (code: string) => void;
 }
 
 // Markdown Preview Component
@@ -296,6 +301,11 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
   onOpenFolder,
   onOpenCommandCenter,
   onCursorChange,
+  fontSize = 13,
+  tabSize = 4,
+  wordWrap = 'on',
+  minimapEnabled = true,
+  onExplainSelection,
 }) => {
   const [showAiFloatingBar, setShowAiFloatingBar] = useState(false);
   const [aiInstruction, setAiInstruction] = useState('');
@@ -310,6 +320,7 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
   const [isMarkdownPreview, setIsMarkdownPreview] = useState(false);
   const [secondaryPreview, setSecondaryPreview] = useState(false);
   const [tabContextMenu, setTabContextMenu] = useState<{ x: number; y: number; tabIndex: number } | null>(null);
+  const [editorContextMenu, setEditorContextMenu] = useState<{ x: number; y: number; selectedText: string } | null>(null);
 
   const editorRef = useRef<any>(null);
   const monacoRef = useRef<any>(null);
@@ -318,6 +329,7 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
   useEffect(() => {
     const handleOutsideClick = () => {
       setTabContextMenu(null);
+      setEditorContextMenu(null);
     };
     window.addEventListener('click', handleOutsideClick);
     return () => window.removeEventListener('click', handleOutsideClick);
@@ -355,6 +367,18 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
     // Track cursor changes for Status Bar
     editor.onDidChangeCursorPosition((e) => {
       onCursorChange?.({ line: e.position.lineNumber, col: e.position.column });
+    });
+
+    // Custom Context Menu on Editor
+    editor.onContextMenu((e) => {
+      e.event.preventDefault();
+      const sel = editor.getSelection();
+      const selection = sel ? editor.getModel()?.getValueInRange(sel) : '';
+      setEditorContextMenu({
+        x: e.event.posx,
+        y: e.event.posy,
+        selectedText: selection || '',
+      });
     });
 
     // Ctrl+I shortcut inside Monaco
@@ -822,16 +846,17 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
                     onMount={handleEditorDidMount}
                     options={{
                       fontFamily: "'JetBrains Mono', Consolas, 'Courier New', monospace",
-                      fontSize: 13,
+                      fontSize: fontSize,
+                      tabSize: tabSize,
+                      wordWrap: wordWrap,
                       lineHeight: 20,
-                      minimap: { enabled: !isSplitView, side: 'right' },
+                      minimap: { enabled: minimapEnabled && !isSplitView, side: 'right' },
                       smoothScrolling: true,
                       cursorBlinking: 'smooth',
                       cursorSmoothCaretAnimation: 'on',
                       renderWhitespace: 'selection',
                       automaticLayout: true,
                       scrollBeyondLastLine: false,
-                      tabSize: 4,
                       inlineSuggest: {
                         enabled: inlineAiEnabled,
                         mode: 'subwordSmart',
@@ -1074,6 +1099,94 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
           </div>
         )}
       </div>
+
+      {/* Monaco Editor Custom Context Menu Popup */}
+      {editorContextMenu && (
+        <div
+          style={{
+            position: 'fixed',
+            top: editorContextMenu.y,
+            left: editorContextMenu.x,
+            background: 'var(--vscode-bg-surface)',
+            border: '1px solid var(--vscode-border)',
+            borderRadius: '6px',
+            padding: '4px 0',
+            minWidth: '220px',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
+            zIndex: 9999,
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div
+            className="menu-entry"
+            style={{ padding: '6px 12px', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+            onClick={() => {
+              if (onExplainSelection) {
+                onExplainSelection(editorContextMenu.selectedText || activeTab?.content || '');
+              }
+              setEditorContextMenu(null);
+            }}
+          >
+            <Sparkles size={13} color="var(--vscode-blue)" />
+            <span>AI で解説 (Explain Code)</span>
+          </div>
+          <div
+            className="menu-entry"
+            style={{ padding: '6px 12px', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+            onClick={() => {
+              setShowAiFloatingBar(true);
+              setEditorContextMenu(null);
+            }}
+          >
+            <Zap size={13} color="#81b88b" />
+            <span>AI でインライン編集 (Ctrl+I)</span>
+          </div>
+          <div style={{ height: '1px', background: 'var(--vscode-border)', margin: '4px 0' }} />
+          <div
+            className="menu-entry"
+            style={{ padding: '6px 12px', fontSize: '12px', cursor: 'pointer' }}
+            onClick={() => {
+              editorRef.current?.getAction('editor.action.formatDocument')?.run();
+              setEditorContextMenu(null);
+            }}
+          >
+            ドキュメントのフォーマット (Shift+Alt+F)
+          </div>
+          <div style={{ height: '1px', background: 'var(--vscode-border)', margin: '4px 0' }} />
+          <div
+            className="menu-entry"
+            style={{ padding: '6px 12px', fontSize: '12px', cursor: 'pointer' }}
+            onClick={() => {
+              if (editorContextMenu.selectedText) {
+                navigator.clipboard.writeText(editorContextMenu.selectedText);
+              }
+              setEditorContextMenu(null);
+            }}
+          >
+            コピー (Copy)
+          </div>
+          <div
+            className="menu-entry"
+            style={{ padding: '6px 12px', fontSize: '12px', cursor: 'pointer' }}
+            onClick={() => {
+              editorRef.current?.trigger('source', 'undo', null);
+              setEditorContextMenu(null);
+            }}
+          >
+            元に戻す (Undo - Ctrl+Z)
+          </div>
+          <div
+            className="menu-entry"
+            style={{ padding: '6px 12px', fontSize: '12px', cursor: 'pointer' }}
+            onClick={() => {
+              editorRef.current?.trigger('source', 'redo', null);
+              setEditorContextMenu(null);
+            }}
+          >
+            やり直す (Redo - Ctrl+Y)
+          </div>
+        </div>
+      )}
     </div>
   );
 };

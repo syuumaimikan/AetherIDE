@@ -28,11 +28,15 @@ import {
 
 interface AgentChatPanelProps {
   activeFile?: OpenFileTab;
+  initialPrompt?: string;
+  onClearInitialPrompt?: () => void;
   onReviewDiff: (diff: { path: string; original: string; modified: string; description: string }) => void;
 }
 
 export const AgentChatPanel: React.FC<AgentChatPanelProps> = ({
   activeFile,
+  initialPrompt,
+  onClearInitialPrompt,
   onReviewDiff,
 }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -52,6 +56,17 @@ export const AgentChatPanel: React.FC<AgentChatPanelProps> = ({
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    if (initialPrompt) {
+      setInputPrompt(initialPrompt);
+      setPanelMode('copilot');
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+      }
+      onClearInitialPrompt?.();
+    }
+  }, [initialPrompt]);
 
   const [panelMode, setPanelMode] = useState<'copilot' | 'swarm'>('copilot');
   const [swarmGoal, setSwarmGoal] = useState('');

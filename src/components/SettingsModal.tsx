@@ -18,12 +18,14 @@ interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   providers: [string, string][];
+  onSettingsSaved?: (settings: any) => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   isOpen,
   onClose,
   providers,
+  onSettingsSaved,
 }) => {
   const [activeTab, setActiveTab] = useState<'editor' | 'ai' | 'security' | 'terminal'>('ai');
   const [selectedProvider, setSelectedProvider] = useState('anthropic');
@@ -65,27 +67,26 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   }, []);
 
   const handleSave = () => {
+    const config = {
+      selectedProvider,
+      selectedModel,
+      apiKey,
+      temperature,
+      preferredShell,
+      fontSize,
+      tabSize,
+      wordWrap,
+      minimap,
+      autoSave,
+      autoApproveSafeReads,
+      blockDangerousCommands,
+    };
     try {
-      localStorage.setItem(
-        'aether_ide_settings',
-        JSON.stringify({
-          selectedProvider,
-          selectedModel,
-          apiKey,
-          temperature,
-          preferredShell,
-          fontSize,
-          tabSize,
-          wordWrap,
-          minimap,
-          autoSave,
-          autoApproveSafeReads,
-          blockDangerousCommands,
-        })
-      );
+      localStorage.setItem('aether_ide_settings', JSON.stringify(config));
     } catch (e) {
       console.error('Failed to save settings to localStorage:', e);
     }
+    onSettingsSaved?.(config);
     setIsSavedNotice(true);
     setTimeout(() => {
       setIsSavedNotice(false);

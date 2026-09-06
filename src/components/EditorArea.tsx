@@ -11,6 +11,11 @@ import {
   Send,
   Sliders,
   FileCode,
+  ChevronRight,
+  Folder,
+  Code2,
+  SplitSquareVertical,
+  Maximize2,
 } from 'lucide-react';
 import { TauriBridge } from '../services/tauriBridge';
 
@@ -359,20 +364,70 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
       )}
 
       {/* Editor Content or VS Code Watermark Welcome Screen */}
-      <div className="editor-container">
+      <div className="editor-container" style={{ display: 'flex', flexDirection: 'column' }}>
         {activeTab ? (
           <>
-            <Editor
-              height="100%"
-              theme="vs-dark"
-              language={getMonacoLanguage(activeTab.path)}
-              value={pendingDiff ? pendingDiff.modified : activeTab.content}
-              onChange={(val) => {
-                if (!pendingDiff) {
-                  onContentChange(val || '');
-                }
+            {/* VS Code Breadcrumbs Bar */}
+            <div
+              style={{
+                height: '24px',
+                background: 'var(--vscode-bg-editor)',
+                borderBottom: '1px solid var(--vscode-border)',
+                display: 'flex',
+                alignItems: 'center',
+                padding: '0 12px',
+                fontSize: '11px',
+                color: 'var(--vscode-text-muted)',
+                gap: '4px',
+                userSelect: 'none',
+                flexShrink: 0,
               }}
-              onMount={handleEditorDidMount}
+            >
+              {activeTab.path
+                .split(/[\\/]/)
+                .filter(Boolean)
+                .map((segment, idx, arr) => {
+                  const isLast = idx === arr.length - 1;
+                  return (
+                    <React.Fragment key={idx}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          cursor: 'pointer',
+                          color: isLast ? '#ffffff' : 'var(--vscode-text-secondary)',
+                          padding: '1px 3px',
+                          borderRadius: '3px',
+                        }}
+                        className="breadcrumb-item"
+                        title={segment}
+                      >
+                        {isLast ? (
+                          <FileCode size={12} color="var(--vscode-blue)" />
+                        ) : (
+                          <Folder size={12} color="#dcb67a" />
+                        )}
+                        <span>{segment}</span>
+                      </div>
+                      {!isLast && <ChevronRight size={10} color="var(--vscode-text-muted)" opacity={0.6} />}
+                    </React.Fragment>
+                  );
+                })}
+            </div>
+
+            <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+              <Editor
+                height="100%"
+                theme="vs-dark"
+                language={getMonacoLanguage(activeTab.path)}
+                value={pendingDiff ? pendingDiff.modified : activeTab.content}
+                onChange={(val) => {
+                  if (!pendingDiff) {
+                    onContentChange(val || '');
+                  }
+                }}
+                onMount={handleEditorDidMount}
               options={{
                 fontFamily: "'JetBrains Mono', Consolas, 'Courier New', monospace",
                 fontSize: 13,
@@ -422,6 +477,7 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
                 <span>Tabキーで補完確定</span>
               </div>
             )}
+            </div>
           </>
         ) : (
           /* VS Code Authentic Watermark Welcome Screen */

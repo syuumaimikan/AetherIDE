@@ -12,6 +12,7 @@ import {
   PermissionRequest,
   TerminalSessionInfo,
   WorkspaceInfo,
+  ToastNotification,
 } from './types';
 import { TauriBridge } from './services/tauriBridge';
 import { TitleBar } from './components/TitleBar';
@@ -36,7 +37,7 @@ import { KeybindingsModal } from './components/KeybindingsModal';
 import { RulesModal } from './components/RulesModal';
 import { GitGraphModal } from './components/GitGraphModal';
 import { StatusBar } from './components/StatusBar';
-import { Bot, GitBranch, MessageSquare, Shield, Sparkles } from 'lucide-react';
+import { Bot, GitBranch, MessageSquare, Shield, Sparkles, CheckCircle2, AlertCircle, Info, X, Bell } from 'lucide-react';
 
 export const App: React.FC = () => {
   // Navigation & Mode
@@ -94,6 +95,32 @@ export const App: React.FC = () => {
   // Permissions & Security
   const [pendingPermissionRequest, setPendingPermissionRequest] = useState<PermissionRequest | null>(null);
   const [providers, setProviders] = useState<[string, string][]>([]);
+
+  // Cursor position & Toasts
+  const [cursorPos, setCursorPos] = useState<{ line: number; col: number }>({ line: 1, col: 1 });
+  const [toasts, setToasts] = useState<ToastNotification[]>([
+    {
+      id: 'toast-init',
+      title: 'AETHER Workspace Ready',
+      message: 'Tokio async runtime and Rust-analyzer initialized successfully.',
+      severity: 'success',
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    },
+  ]);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+
+  const addToast = (toast: Omit<ToastNotification, 'id' | 'timestamp'>) => {
+    const id = `toast-${Date.now()}`;
+    const newToast: ToastNotification = {
+      ...toast,
+      id,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+    setToasts((prev) => [newToast, ...prev]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 6000);
+  };
 
   // Load initial workspace state
   useEffect(() => {
@@ -525,6 +552,7 @@ export const App: React.FC = () => {
                 onAiInlineEdit={handleAiInlineEdit}
                 onOpenFolder={handleOpenFolder}
                 onOpenCommandCenter={() => setIsCommandCenterOpen(true)}
+                onCursorChange={setCursorPos}
               />
             </>
           )}
@@ -598,17 +626,13 @@ export const App: React.FC = () => {
                 </button>
               </div>
 
-              <span
-                style={{
-                  fontSize: '10px',
-                  background: 'rgba(0, 120, 212, 0.15)',
-                  color: 'var(--vscode-blue)',
-                  padding: '2px 6px',
-                  borderRadius: 4,
-                }}
+              <button
+                onClick={() => setRightPanelTab(rightPanelTab === 'swarm' ? 'copilot' : 'swarm')}
+                className="tab-close-btn"
+                title="ビュー切替"
               >
-                {rightPanelTab === 'swarm' ? '5-Stage Team' : 'Active Context'}
-              </span>
+                <MessageSquare size={13} />
+              </button>
             </div>
 
             {rightPanelTab === 'copilot' ? (
@@ -618,18 +642,20 @@ export const App: React.FC = () => {
               />
             ) : (
               <>
-                <AgentDashboard
-                  metrics={metrics}
-                  agents={agents}
-                  tasks={tasks}
-                  onRunTeamPipeline={(goal) => handleRunAutonomousTeam(goal)}
-                  onSubmitTask={async (title, desc, prio) => {
-                    await TauriBridge.submitTask(title, desc, prio);
-                    const taskList = await TauriBridge.listTasks();
-                    setTasks(taskList);
-                  }}
-                />
-                <div style={{ borderTop: '1px solid var(--vscode-border)', height: '220px', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ padding: '12px', borderBottom: '1px solid var(--vscode-border)' }}>
+                  <AgentDashboard
+                    metrics={metrics}
+                    agents={agents}
+                    tasks={tasks}
+                    onRunTeamPipeline={(goal) => handleRunAutonomousTeam(goal)}
+                    onSubmitTask={async (title, desc, prio) => {
+                      await TauriBridge.submitTask(title, desc, prio);
+                      const taskList = await TauriBridge.listTasks();
+                      setTasks(taskList);
+                    }}
+                  />
+                </div>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                   <div style={{ padding: '6px 12px', fontSize: '11px', fontWeight: 600, color: 'var(--vscode-text-secondary)' }}>
                     Live Agent Execution Log
                   </div>
@@ -647,13 +673,163 @@ export const App: React.FC = () => {
       <StatusBar
         gitStatus={gitStatus}
         activeLanguage={openTabs[activeTabIndex]?.language === 'rust' ? 'Rust' : openTabs[activeTabIndex]?.language === 'typescript' ? 'TypeScript' : 'Plain Text'}
+        cursorPos={cursorPos}
+        notificationsCount={toasts.length}
         onOpenTerminal={() => setIsTerminalOpen(!isTerminalOpen)}
         onOpenKeybindings={() => setIsKeybindingsOpen(true)}
+        onToggleNotifications={() => setIsNotificationsOpen((prev) => !prev)}
         onRefreshGit={async () => {
           const s = await TauriBridge.getGitStatus();
           setGitStatus(s);
         }}
       />
+
+      {/* Floating Toast Notification Popups */}
+      <div
+        style={{
+          position: 'fixed',
+          bottom: '30px',
+          right: '16px',
+          zIndex: 9999,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px',
+          maxWidth: '360px',
+          pointerEvents: 'none',
+        }}
+      >
+        {toasts.map((toast) => (
+          <div
+            key={toast.id}
+            style={{
+              pointerEvents: 'auto',
+              background: 'var(--vscode-bg-surface)',
+              border: `1px solid ${
+                toast.severity === 'success'
+                  ? '#81b88b'
+                  : toast.severity === 'error'
+                  ? '#f87171'
+                  : toast.severity === 'warning'
+                  ? '#fbbf24'
+                  : 'var(--vscode-blue)'
+              }`,
+              borderRadius: '6px',
+              padding: '10px 12px',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '4px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, color: '#ffffff' }}>
+                {toast.severity === 'success' && <CheckCircle2 size={14} color="#81b88b" />}
+                {toast.severity === 'error' && <AlertCircle size={14} color="#f87171" />}
+                {toast.severity === 'warning' && <AlertCircle size={14} color="#fbbf24" />}
+                {toast.severity === 'info' && <Info size={14} color="var(--vscode-blue)" />}
+                <span>{toast.title}</span>
+              </div>
+              <button
+                className="tab-close-btn"
+                onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))}
+              >
+                <X size={12} />
+              </button>
+            </div>
+            <div style={{ fontSize: '11px', color: 'var(--vscode-text-secondary)', lineHeight: '1.4' }}>
+              {toast.message}
+            </div>
+            {toast.action && (
+              <button
+                className="btn btn-primary btn-sm"
+                style={{ alignSelf: 'flex-start', marginTop: '4px', fontSize: '10px', padding: '2px 8px' }}
+                onClick={() => {
+                  toast.action?.onClick();
+                  setToasts((prev) => prev.filter((t) => t.id !== toast.id));
+                }}
+              >
+                {toast.action.label}
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Notification Center Tray */}
+      {isNotificationsOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '26px',
+            right: '8px',
+            width: '320px',
+            maxHeight: '400px',
+            background: 'var(--vscode-bg-surface)',
+            border: '1px solid var(--vscode-border)',
+            borderRadius: '6px 6px 0 0',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.7)',
+            zIndex: 9998,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          }}
+        >
+          <div
+            style={{
+              padding: '8px 12px',
+              borderBottom: '1px solid var(--vscode-border)',
+              background: 'var(--vscode-bg-titlebar)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              fontSize: '11px',
+              fontWeight: 600,
+            }}
+          >
+            <span>通知センター ({toasts.length})</span>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button
+                className="tab-close-btn"
+                onClick={() => setToasts([])}
+                title="すべてクリア"
+                style={{ fontSize: '10px' }}
+              >
+                クリア
+              </button>
+              <button
+                className="tab-close-btn"
+                onClick={() => setIsNotificationsOpen(false)}
+              >
+                <X size={12} />
+              </button>
+            </div>
+          </div>
+          <div style={{ padding: '8px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {toasts.length === 0 ? (
+              <div style={{ color: 'var(--vscode-text-muted)', fontSize: '11px', textAlign: 'center', padding: '16px' }}>
+                新しい通知はありません
+              </div>
+            ) : (
+              toasts.map((t) => (
+                <div
+                  key={t.id}
+                  style={{
+                    padding: '8px',
+                    borderRadius: '4px',
+                    background: 'var(--vscode-bg-input)',
+                    border: '1px solid var(--vscode-border)',
+                    fontSize: '11px',
+                  }}
+                >
+                  <div style={{ fontWeight: 600, color: '#ffffff', marginBottom: '2px' }}>{t.title}</div>
+                  <div style={{ color: 'var(--vscode-text-secondary)', fontSize: '10px' }}>{t.message}</div>
+                  <div style={{ color: 'var(--vscode-text-muted)', fontSize: '9px', marginTop: '4px' }}>{t.timestamp}</div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Command Center Modal */}
       <CommandCenter

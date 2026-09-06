@@ -5,17 +5,23 @@ import { GitRepoStatus } from '../types';
 interface StatusBarProps {
   gitStatus: GitRepoStatus | null;
   activeLanguage?: string;
+  cursorPos?: { line: number; col: number };
+  notificationsCount?: number;
   onOpenTerminal?: () => void;
   onOpenKeybindings?: () => void;
   onRefreshGit?: () => void;
+  onToggleNotifications?: () => void;
 }
 
 export const StatusBar: React.FC<StatusBarProps> = ({
   gitStatus,
   activeLanguage = 'Rust',
+  cursorPos,
+  notificationsCount = 0,
   onOpenTerminal,
   onOpenKeybindings,
   onRefreshGit,
+  onToggleNotifications,
 }) => {
   return (
     <footer className="statusbar">
@@ -69,8 +75,14 @@ export const StatusBar: React.FC<StatusBarProps> = ({
         </div>
       </div>
 
-      {/* Right items: Encoding, Indent, Language, AI status, Bell */}
+      {/* Right items: Cursor Pos, Encoding, Indent, Language, AI status, Bell */}
       <div className="statusbar-right">
+        {cursorPos && (
+          <div className="statusbar-item" title="カーソル位置 (行、列)">
+            <span>行 {cursorPos.line}、列 {cursorPos.col}</span>
+          </div>
+        )}
+
         <div className="statusbar-item" title="インデントの選択">
           <span>スペース: 4</span>
         </div>
@@ -99,8 +111,26 @@ export const StatusBar: React.FC<StatusBarProps> = ({
         </div>
 
         {/* Notification Bell */}
-        <div className="statusbar-item" title="通知の表示">
+        <div
+          className="statusbar-item"
+          title={`通知 (${notificationsCount} 件)`}
+          onClick={onToggleNotifications}
+          style={{ position: 'relative' }}
+        >
           <Bell size={12} />
+          {notificationsCount > 0 && (
+            <span
+              style={{
+                position: 'absolute',
+                top: 2,
+                right: 2,
+                width: 6,
+                height: 6,
+                borderRadius: '50%',
+                backgroundColor: 'var(--vscode-blue)',
+              }}
+            />
+          )}
         </div>
       </div>
     </footer>

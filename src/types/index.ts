@@ -203,3 +203,16 @@ export interface ChatMessage {
     description: string;
   };
 }
+
+export interface ToastNotification {
+  id: string;
+  title: string;
+  message: string;
+  severity: 'info' | 'success' | 'warning' | 'error';
+  timestamp: string;
+  action?: {
+    label: string;
+    onClick: () => void;
+  };
+}
+

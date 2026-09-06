@@ -32,6 +32,7 @@ interface EditorAreaProps {
   onAiInlineEdit: (instruction: string) => void;
   onOpenFolder?: () => void;
   onOpenCommandCenter?: () => void;
+  onCursorChange?: (pos: { line: number; col: number }) => void;
 }
 
 // Markdown Preview Component
@@ -288,6 +289,7 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
   onAiInlineEdit,
   onOpenFolder,
   onOpenCommandCenter,
+  onCursorChange,
 }) => {
   const [showAiFloatingBar, setShowAiFloatingBar] = useState(false);
   const [aiInstruction, setAiInstruction] = useState('');
@@ -334,6 +336,11 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
   const handleEditorDidMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
+
+    // Track cursor changes for Status Bar
+    editor.onDidChangeCursorPosition((e) => {
+      onCursorChange?.({ line: e.position.lineNumber, col: e.position.column });
+    });
 
     // Ctrl+I shortcut inside Monaco
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyI, () => {

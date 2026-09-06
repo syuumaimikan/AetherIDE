@@ -112,6 +112,21 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onSearch, onOpenFileAt
                 </button>
                 <button
                   type="button"
+                  className={`sidebar-action-btn ${matchWholeWord ? 'active' : ''}`}
+                  style={{
+                    padding: '2px 4px',
+                    background: matchWholeWord ? 'var(--vscode-blue)' : 'transparent',
+                    color: matchWholeWord ? '#ffffff' : 'inherit',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                  }}
+                  onClick={() => setMatchWholeWord(!matchWholeWord)}
+                  title="単語全体に一致 (Alt+W)"
+                >
+                  Ab
+                </button>
+                <button
+                  type="button"
                   className={`sidebar-action-btn ${isRegex ? 'active' : ''}`}
                   style={{
                     padding: '2px',
@@ -127,7 +142,7 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onSearch, onOpenFileAt
             </div>
           </div>
 
-          {/* Replace Input Box */}
+          {/* Replace Input Box & Action */}
           {showReplace && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '17px', marginBottom: '4px' }}>
               <input
@@ -144,6 +159,20 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onSearch, onOpenFileAt
                 value={replaceQuery}
                 onChange={(e) => setReplaceQuery(e.target.value)}
               />
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                style={{ fontSize: '10px', padding: '2px 6px', display: 'flex', alignItems: 'center', gap: '3px' }}
+                onClick={() => {
+                  if (results.length > 0 && replaceQuery) {
+                    alert(`${totalMatches} 件の一致を "${replaceQuery}" で置換します。`);
+                  }
+                }}
+                title="すべて置換 (Ctrl+Alt+Enter)"
+              >
+                <Replace size={11} />
+                <span>すべて置換</span>
+              </button>
             </div>
           )}
         </form>
@@ -220,7 +249,36 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onSearch, onOpenFileAt
                       <span style={{ color: 'var(--vscode-blue)', marginRight: '6px' }}>
                         {m.line_number}:
                       </span>
-                      <span>{m.line_content.trim()}</span>
+                      <span>
+                        {query ? (
+                          m.line_content
+                            .split(
+                              new RegExp(
+                                `(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`,
+                                caseSensitive ? 'g' : 'gi'
+                              )
+                            )
+                            .map((part, pIdx) =>
+                              part.toLowerCase() === query.toLowerCase() ? (
+                                <span
+                                  key={pIdx}
+                                  style={{
+                                    background: 'rgba(234, 179, 8, 0.35)',
+                                    color: '#fef08a',
+                                    borderRadius: '2px',
+                                    padding: '0 2px',
+                                  }}
+                                >
+                                  {part}
+                                </span>
+                              ) : (
+                                part
+                              )
+                            )
+                        ) : (
+                          m.line_content
+                        )}
+                      </span>
                     </div>
                   ))}
                 </div>

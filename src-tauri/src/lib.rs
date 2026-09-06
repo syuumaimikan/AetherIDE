@@ -19,7 +19,7 @@ pub fn run() {
             // Forward event bus messages to the frontend via tauri event
             let handle = app.handle().clone();
             let mut rx = event_bus.subscribe();
-            tokio::spawn(async move {
+            tauri::async_runtime::spawn(async move {
                 while let Ok(event) = rx.recv().await {
                     let _ = handle.emit("aether://event", event);
                 }

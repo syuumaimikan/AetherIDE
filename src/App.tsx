@@ -21,6 +21,8 @@ import { EditorArea } from './components/EditorArea';
 import { TerminalPanel } from './components/TerminalPanel';
 import { GitPanel } from './components/GitPanel';
 import { SearchPanel } from './components/SearchPanel';
+import { ExtensionsPanel } from './components/ExtensionsPanel';
+import { DebugPanel } from './components/DebugPanel';
 import { CommandCenter } from './components/CommandCenter';
 import { AgentDashboard } from './components/AgentDashboard';
 import { AgentGraph, PipelineStageState } from './components/AgentGraph';
@@ -469,6 +471,16 @@ export const App: React.FC = () => {
             }
             onOpenFileAtLine={(path, line) => {
               handleOpenFile(path);
+            }}
+          />
+        )}
+
+        {activeActivityTab === 'extensions' && <ExtensionsPanel />}
+
+        {activeActivityTab === 'debug' && (
+          <DebugPanel
+            onStartDebug={(config) => {
+              setIsTerminalOpen(true);
             }}
           />
         )}

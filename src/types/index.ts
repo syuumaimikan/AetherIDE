@@ -1,6 +1,6 @@
 export type AppMode = 'normal' | 'agent' | 'os';
 
-export type ActivityTab = 'explorer' | 'search' | 'git' | 'agents' | 'terminal' | 'settings';
+export type ActivityTab = 'explorer' | 'search' | 'git' | 'debug' | 'extensions' | 'agents' | 'terminal' | 'settings';
 
 export interface FileNode {
   name: string;

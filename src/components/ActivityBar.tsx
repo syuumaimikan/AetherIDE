@@ -61,8 +61,8 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
 
         {/* Run & Debug */}
         <button
-          className={`activity-item ${activeTab === 'terminal' ? 'active' : ''}`}
-          onClick={() => setActiveTab('terminal')}
+          className={`activity-item ${activeTab === 'debug' ? 'active' : ''}`}
+          onClick={() => setActiveTab('debug')}
           title="実行とデバッグ (Ctrl+Shift+D)"
         >
           <Bug size={20} />
@@ -70,11 +70,20 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
 
         {/* Extensions */}
         <button
-          className={`activity-item ${activeTab === 'agents' ? 'active' : ''}`}
-          onClick={() => setActiveTab('agents')}
-          title="AI Agent Swarm & 拡張機能 (Ctrl+Shift+X)"
+          className={`activity-item ${activeTab === 'extensions' ? 'active' : ''}`}
+          onClick={() => setActiveTab('extensions')}
+          title="拡張機能 & AI Skill マーケットプレイス (Ctrl+Shift+X)"
         >
           <Blocks size={20} />
+        </button>
+
+        {/* AI Agent Swarm */}
+        <button
+          className={`activity-item ${activeTab === 'agents' ? 'active' : ''}`}
+          onClick={() => setActiveTab('agents')}
+          title="AI Agent Swarm: 自律タスク実行"
+        >
+          <Bot size={20} />
         </button>
 
         {/* Agent OS Cockpit */}

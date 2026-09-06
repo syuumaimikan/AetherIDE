@@ -668,6 +668,7 @@ export const App: React.FC = () => {
                 handleOpenFile(path);
                 if (line) setEditorTargetLine({ line, timestamp: Date.now() });
               }}
+              onNotification={addToast}
             />
           )}
         </div>

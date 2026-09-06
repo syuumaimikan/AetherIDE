@@ -732,6 +732,23 @@ export const App: React.FC = () => {
                 initialPrompt={copilotInitialPrompt}
                 onClearInitialPrompt={() => setCopilotInitialPrompt('')}
                 onReviewDiff={(diff) => setActiveReviewDiff(diff)}
+                onInsertCode={(code) => {
+                  if (activeTabIndex >= 0 && openTabs[activeTabIndex]) {
+                    handleContentChange(openTabs[activeTabIndex].content + '\n' + code);
+                    addToast({
+                      title: 'コードを挿入しました',
+                      message: `${openTabs[activeTabIndex].name} に生成コードを挿入しました。`,
+                      severity: 'success',
+                    });
+                  } else {
+                    addToast({
+                      title: '挿入先ファイルなし',
+                      message: 'コードを挿入するにはエディターでファイルを開いてください。',
+                      severity: 'warning',
+                    });
+                  }
+                }}
+                onNotification={addToast}
               />
             ) : (
               <>

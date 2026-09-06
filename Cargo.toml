@@ -1,0 +1,52 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/aether-core",
+    "crates/aether-permission",
+    "crates/aether-tool-runtime",
+    "crates/aether-workspace",
+    "crates/aether-terminal",
+    "crates/aether-git",
+    "crates/aether-search",
+    "crates/aether-ai-core",
+    "crates/aether-context-engine",
+    "crates/aether-agent-runtime",
+    "crates/aether-agent-orchestrator",
+    "src-tauri"
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Aether IDE Team"]
+license = "MIT OR Apache-2.0"
+
+[workspace.dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.40", features = ["full"] }
+uuid = { version = "1.10", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+thiserror = "1.0"
+anyhow = "1.0"
+async-trait = "0.1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+regex = "1.10"
+walkdir = "2.5"
+portable-pty = "0.8"
+futures = "0.3"
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls"] }
+
+# Internal workspace crates
+aether-core = { path = "crates/aether-core" }
+aether-permission = { path = "crates/aether-permission" }
+aether-tool-runtime = { path = "crates/aether-tool-runtime" }
+aether-workspace = { path = "crates/aether-workspace" }
+aether-terminal = { path = "crates/aether-terminal" }
+aether-git = { path = "crates/aether-git" }
+aether-search = { path = "crates/aether-search" }
+aether-ai-core = { path = "crates/aether-ai-core" }
+aether-context-engine = { path = "crates/aether-context-engine" }
+aether-agent-runtime = { path = "crates/aether-agent-runtime" }
+aether-agent-orchestrator = { path = "crates/aether-agent-orchestrator" }

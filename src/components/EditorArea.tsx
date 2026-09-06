@@ -51,11 +51,16 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
   const [inlineAiEnabled, setInlineAiEnabled] = useState(true);
   const [pendingDiff, setPendingDiff] = useState<{ original: string; modified: string } | null>(null);
 
+  // Split View State
+  const [isSplitView, setIsSplitView] = useState(false);
+  const [splitTabIndex, setSplitTabIndex] = useState<number>(0);
+
   const editorRef = useRef<any>(null);
   const monacoRef = useRef<any>(null);
   const providerDisposableRef = useRef<any>(null);
 
   const activeTab = openTabs[activeTabIndex];
+  const secondaryTab = openTabs[splitTabIndex] || activeTab;
 
   useEffect(() => {
     if (targetLine && editorRef.current) {
@@ -228,6 +233,15 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
         {openTabs.length > 0 && (
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px', paddingRight: '8px' }}>
             <button
+              className={`btn btn-sm ${isSplitView ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setIsSplitView(!isSplitView)}
+              title="エディターを左右に分割 (Split Editor Right)"
+              style={{ fontSize: '11px', padding: '2px 8px' }}
+            >
+              <SplitSquareVertical size={12} color={isSplitView ? '#ffffff' : 'var(--vscode-blue)'} />
+              <span>{isSplitView ? '1画面に戻す' : '分割 (Split)'}</span>
+            </button>
+            <button
               className={`btn btn-sm ${inlineAiEnabled ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => setInlineAiEnabled(!inlineAiEnabled)}
               title={inlineAiEnabled ? 'Ghost AI: ON (Tabで確定)' : 'Ghost AI: OFF'}
@@ -376,119 +390,190 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
       {/* Editor Content or VS Code Watermark Welcome Screen */}
       <div className="editor-container" style={{ display: 'flex', flexDirection: 'column' }}>
         {activeTab ? (
-          <>
-            {/* VS Code Breadcrumbs Bar */}
-            <div
-              style={{
-                height: '24px',
-                background: 'var(--vscode-bg-editor)',
-                borderBottom: '1px solid var(--vscode-border)',
-                display: 'flex',
-                alignItems: 'center',
-                padding: '0 12px',
-                fontSize: '11px',
-                color: 'var(--vscode-text-muted)',
-                gap: '4px',
-                userSelect: 'none',
-                flexShrink: 0,
-              }}
-            >
-              {activeTab.path
-                .split(/[\\/]/)
-                .filter(Boolean)
-                .map((segment, idx, arr) => {
-                  const isLast = idx === arr.length - 1;
-                  return (
-                    <React.Fragment key={idx}>
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          cursor: 'pointer',
-                          color: isLast ? '#ffffff' : 'var(--vscode-text-secondary)',
-                          padding: '1px 3px',
-                          borderRadius: '3px',
-                        }}
-                        className="breadcrumb-item"
-                        title={segment}
-                      >
-                        {isLast ? (
-                          <FileCode size={12} color="var(--vscode-blue)" />
-                        ) : (
-                          <Folder size={12} color="#dcb67a" />
-                        )}
-                        <span>{segment}</span>
-                      </div>
-                      {!isLast && <ChevronRight size={10} color="var(--vscode-text-muted)" opacity={0.6} />}
-                    </React.Fragment>
-                  );
-                })}
-            </div>
-
-            <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
-              <Editor
-                height="100%"
-                theme="vs-dark"
-                language={getMonacoLanguage(activeTab.path)}
-                value={pendingDiff ? pendingDiff.modified : activeTab.content}
-                onChange={(val) => {
-                  if (!pendingDiff) {
-                    onContentChange(val || '');
-                  }
-                }}
-                onMount={handleEditorDidMount}
-              options={{
-                fontFamily: "'JetBrains Mono', Consolas, 'Courier New', monospace",
-                fontSize: 13,
-                lineHeight: 20,
-                minimap: { enabled: true, side: 'right' },
-                smoothScrolling: true,
-                cursorBlinking: 'smooth',
-                cursorSmoothCaretAnimation: 'on',
-                renderWhitespace: 'selection',
-                automaticLayout: true,
-                scrollBeyondLastLine: false,
-                tabSize: 4,
-                inlineSuggest: {
-                  enabled: inlineAiEnabled,
-                  mode: 'subwordSmart',
-                },
-              }}
-            />
-
-            {inlineAiEnabled && (
+          <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+            {/* Primary Left Editor Pane */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', borderRight: isSplitView ? '1px solid var(--vscode-border)' : 'none', overflow: 'hidden' }}>
+              {/* VS Code Breadcrumbs Bar */}
               <div
                 style={{
-                  position: 'absolute',
-                  bottom: 10,
-                  right: 20,
+                  height: '24px',
+                  background: 'var(--vscode-bg-editor)',
+                  borderBottom: '1px solid var(--vscode-border)',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '6px',
-                  background: 'rgba(30, 30, 30, 0.9)',
-                  border: '1px solid rgba(0, 120, 212, 0.4)',
-                  padding: '2px 8px',
-                  borderRadius: '4px',
+                  padding: '0 12px',
                   fontSize: '11px',
-                  color: 'var(--vscode-text-secondary)',
-                  zIndex: 20,
-                  pointerEvents: 'none',
+                  color: 'var(--vscode-text-muted)',
+                  gap: '4px',
+                  userSelect: 'none',
+                  flexShrink: 0,
                 }}
               >
-                <span
-                  style={{
-                    width: 6,
-                    height: 6,
-                    borderRadius: '50%',
-                    backgroundColor: '#81b88b',
+                {activeTab.path
+                  .split(/[\\/]/)
+                  .filter(Boolean)
+                  .map((segment, idx, arr) => {
+                    const isLast = idx === arr.length - 1;
+                    return (
+                      <React.Fragment key={idx}>
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            cursor: 'pointer',
+                            color: isLast ? '#ffffff' : 'var(--vscode-text-secondary)',
+                            padding: '1px 3px',
+                            borderRadius: '3px',
+                          }}
+                          className="breadcrumb-item"
+                          title={segment}
+                        >
+                          {isLast ? (
+                            <FileCode size={12} color="var(--vscode-blue)" />
+                          ) : (
+                            <Folder size={12} color="#dcb67a" />
+                          )}
+                          <span>{segment}</span>
+                        </div>
+                        {!isLast && <ChevronRight size={10} color="var(--vscode-text-muted)" opacity={0.6} />}
+                      </React.Fragment>
+                    );
+                  })}
+              </div>
+
+              <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+                <Editor
+                  height="100%"
+                  theme="vs-dark"
+                  language={getMonacoLanguage(activeTab.path)}
+                  value={pendingDiff ? pendingDiff.modified : activeTab.content}
+                  onChange={(val) => {
+                    if (!pendingDiff) {
+                      onContentChange(val || '');
+                    }
+                  }}
+                  onMount={handleEditorDidMount}
+                  options={{
+                    fontFamily: "'JetBrains Mono', Consolas, 'Courier New', monospace",
+                    fontSize: 13,
+                    lineHeight: 20,
+                    minimap: { enabled: !isSplitView, side: 'right' },
+                    smoothScrolling: true,
+                    cursorBlinking: 'smooth',
+                    cursorSmoothCaretAnimation: 'on',
+                    renderWhitespace: 'selection',
+                    automaticLayout: true,
+                    scrollBeyondLastLine: false,
+                    tabSize: 4,
+                    inlineSuggest: {
+                      enabled: inlineAiEnabled,
+                      mode: 'subwordSmart',
+                    },
                   }}
                 />
-                <span>Tabキーで補完確定</span>
+
+                {inlineAiEnabled && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      bottom: 10,
+                      right: 20,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      background: 'rgba(30, 30, 30, 0.9)',
+                      border: '1px solid rgba(0, 120, 212, 0.4)',
+                      padding: '2px 8px',
+                      borderRadius: '4px',
+                      fontSize: '11px',
+                      color: 'var(--vscode-text-secondary)',
+                      zIndex: 20,
+                      pointerEvents: 'none',
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: '50%',
+                        backgroundColor: '#81b88b',
+                      }}
+                    />
+                    <span>Tabキーで補完確定</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Secondary Right Editor Pane (When Split) */}
+            {isSplitView && secondaryTab && (
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                {/* Secondary Tab Switcher & Breadcrumbs */}
+                <div
+                  style={{
+                    height: '24px',
+                    background: 'var(--vscode-bg-titlebar)',
+                    borderBottom: '1px solid var(--vscode-border)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '0 8px',
+                    fontSize: '11px',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <FileCode size={12} color="#38bdf8" />
+                    <select
+                      value={splitTabIndex}
+                      onChange={(e) => setSplitTabIndex(parseInt(e.target.value))}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: '#ffffff',
+                        fontSize: '11px',
+                        outline: 'none',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {openTabs.map((t, idx) => (
+                        <option key={t.path} value={idx} style={{ background: 'var(--vscode-bg-surface)' }}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <button
+                    className="tab-close-btn"
+                    onClick={() => setIsSplitView(false)}
+                    title="分割を閉じる"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+
+                <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+                  <Editor
+                    height="100%"
+                    theme="vs-dark"
+                    language={getMonacoLanguage(secondaryTab.path)}
+                    value={secondaryTab.content}
+                    options={{
+                      fontFamily: "'JetBrains Mono', Consolas, 'Courier New', monospace",
+                      fontSize: 13,
+                      lineHeight: 20,
+                      minimap: { enabled: false },
+                      smoothScrolling: true,
+                      automaticLayout: true,
+                      scrollBeyondLastLine: false,
+                      tabSize: 4,
+                      readOnly: false,
+                    }}
+                  />
+                </div>
               </div>
             )}
-            </div>
-          </>
+          </div>
         ) : (
           /* VS Code Authentic Watermark Welcome Screen */
           <div

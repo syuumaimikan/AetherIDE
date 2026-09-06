@@ -29,7 +29,9 @@ interface CommandCenterProps {
   isOpen: boolean;
   onClose: () => void;
   availableFiles: string[];
+  activeFileContent?: string;
   onOpenFile: (path: string) => void;
+  onJumpToLine?: (line: number) => void;
   onRunTeamPipeline: () => void;
   onOpenSettings: () => void;
   onToggleTerminal: () => void;
@@ -41,11 +43,47 @@ interface CommandCenterProps {
   onSwitchMode?: (mode: 'normal' | 'agent' | 'os') => void;
 }
 
+function extractFileSymbols(content?: string): { name: string; line: number; kind: string }[] {
+  if (!content) return [];
+  const lines = content.split('\n');
+  const symbols: { name: string; line: number; kind: string }[] = [];
+
+  lines.forEach((lineText, idx) => {
+    const lineNum = idx + 1;
+    const trimmed = lineText.trim();
+    if (!trimmed || trimmed.startsWith('//') || trimmed.startsWith('#')) return;
+
+    if (trimmed.startsWith('fn ') || trimmed.startsWith('pub fn ') || trimmed.startsWith('async fn ') || trimmed.startsWith('pub async fn ')) {
+      const match = trimmed.match(/(?:pub\s+)?(?:async\s+)?fn\s+([a-zA-Z0-9_]+)/);
+      if (match) symbols.push({ name: match[1], line: lineNum, kind: 'function' });
+    } else if (trimmed.startsWith('struct ') || trimmed.startsWith('pub struct ')) {
+      const match = trimmed.match(/(?:pub\s+)?struct\s+([a-zA-Z0-9_]+)/);
+      if (match) symbols.push({ name: match[1], line: lineNum, kind: 'struct' });
+    } else if (trimmed.startsWith('enum ') || trimmed.startsWith('pub enum ')) {
+      const match = trimmed.match(/(?:pub\s+)?enum\s+([a-zA-Z0-9_]+)/);
+      if (match) symbols.push({ name: match[1], line: lineNum, kind: 'enum' });
+    } else if (trimmed.startsWith('export const ') || trimmed.startsWith('const ')) {
+      const match = trimmed.match(/(?:export\s+)?const\s+([a-zA-Z0-9_]+)/);
+      if (match) symbols.push({ name: match[1], line: lineNum, kind: 'variable' });
+    } else if (trimmed.startsWith('export function ') || trimmed.startsWith('function ')) {
+      const match = trimmed.match(/(?:export\s+)?function\s+([a-zA-Z0-9_]+)/);
+      if (match) symbols.push({ name: match[1], line: lineNum, kind: 'function' });
+    } else if (trimmed.startsWith('export interface ') || trimmed.startsWith('interface ')) {
+      const match = trimmed.match(/(?:export\s+)?interface\s+([a-zA-Z0-9_]+)/);
+      if (match) symbols.push({ name: match[1], line: lineNum, kind: 'interface' });
+    }
+  });
+
+  return symbols;
+}
+
 export const CommandCenter: React.FC<CommandCenterProps> = ({
   isOpen,
   onClose,
   availableFiles,
+  activeFileContent,
   onOpenFile,
+  onJumpToLine,
   onRunTeamPipeline,
   onOpenSettings,
   onToggleTerminal,
@@ -189,10 +227,25 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
     },
   }));
 
-  const allItems = [...baseCommands, ...fileCommands];
+  const symbols = extractFileSymbols(activeFileContent);
+  const symbolCommands: CommandItem[] = symbols.map((sym) => ({
+    id: `sym-${sym.name}-${sym.line}`,
+    title: `@${sym.name} (${sym.kind}) : 行 ${sym.line}`,
+    category: 'Action',
+    icon: <Sparkles size={14} color="#a855f7" />,
+    action: () => {
+      if (onJumpToLine) onJumpToLine(sym.line);
+      onClose();
+    },
+  }));
+
+  const allItems = query.startsWith('@')
+    ? symbolCommands
+    : [...baseCommands, ...symbolCommands, ...fileCommands];
+
   const filtered = allItems.filter(
     (item) =>
-      item.title.toLowerCase().includes(query.toLowerCase()) ||
+      item.title.toLowerCase().includes(query.toLowerCase().replace('@', '')) ||
       item.category.toLowerCase().includes(query.toLowerCase())
   );
 

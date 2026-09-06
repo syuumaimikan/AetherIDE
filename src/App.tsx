@@ -660,7 +660,9 @@ export const App: React.FC = () => {
         isOpen={isCommandCenterOpen}
         onClose={() => setIsCommandCenterOpen(false)}
         availableFiles={['/src/main.rs', '/src/agent.rs', '/Cargo.toml', '/README.md']}
+        activeFileContent={openTabs[activeTabIndex]?.content}
         onOpenFile={handleOpenFile}
+        onJumpToLine={(line) => setEditorTargetLine({ line, timestamp: Date.now() })}
         onRunTeamPipeline={() => handleRunAutonomousTeam()}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onToggleTerminal={() => setIsTerminalOpen(!isTerminalOpen)}

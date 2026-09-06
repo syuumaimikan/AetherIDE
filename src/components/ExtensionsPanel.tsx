@@ -10,6 +10,9 @@ import {
   Star,
   Trash2,
   Zap,
+  X,
+  ExternalLink,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface ExtensionItem {
@@ -26,8 +29,14 @@ interface ExtensionItem {
   iconColor: string;
 }
 
-export const ExtensionsPanel: React.FC = () => {
+interface ExtensionsPanelProps {
+  onNotification?: (toast: { title: string; message: string; severity: 'success' | 'info' | 'warning' | 'error' }) => void;
+}
+
+export const ExtensionsPanel: React.FC<ExtensionsPanelProps> = ({ onNotification }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<'all' | 'ai' | 'language' | 'tool' | 'installed'>('all');
+  const [selectedDetailExt, setSelectedDetailExt] = useState<ExtensionItem | null>(null);
   const [extensions, setExtensions] = useState<ExtensionItem[]>([
     {
       id: 'ext-rust-analyzer',
@@ -114,6 +123,19 @@ export const ExtensionsPanel: React.FC = () => {
       prev.map((ext) => {
         if (ext.id === id) {
           const nextInstalled = !ext.installed;
+          if (nextInstalled) {
+            onNotification?.({
+              title: '拡張機能をインストールしました',
+              message: `${ext.name} (${ext.version}) が正常にアクティベートされました。`,
+              severity: 'success',
+            });
+          } else {
+            onNotification?.({
+              title: '拡張機能をアンインストールしました',
+              message: `${ext.name} を削除しました。`,
+              severity: 'info',
+            });
+          }
           return { ...ext, installed: nextInstalled, enabled: nextInstalled };
         }
         return ext;
@@ -123,21 +145,43 @@ export const ExtensionsPanel: React.FC = () => {
 
   const toggleEnabled = (id: string) => {
     setExtensions((prev) =>
-      prev.map((ext) => (ext.id === id ? { ...ext, enabled: !ext.enabled } : ext))
+      prev.map((ext) => {
+        if (ext.id === id) {
+          const nextEnabled = !ext.enabled;
+          onNotification?.({
+            title: nextEnabled ? '拡張機能を有効化' : '拡張機能を無効化',
+            message: `${ext.name} を${nextEnabled ? '有効' : '無効'}に設定しました。`,
+            severity: 'info',
+          });
+          return { ...ext, enabled: nextEnabled };
+        }
+        return ext;
+      })
     );
   };
 
-  const filtered = extensions.filter(
-    (ext) =>
+  const filtered = extensions.filter((ext) => {
+    const matchesSearch =
       ext.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      ext.description.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+      ext.description.toLowerCase().includes(searchQuery.toLowerCase());
+    if (selectedCategory === 'installed') return matchesSearch && ext.installed;
+    if (selectedCategory === 'all') return matchesSearch;
+    return matchesSearch && ext.category === selectedCategory;
+  });
 
   const installedList = filtered.filter((e) => e.installed);
   const recommendedList = filtered.filter((e) => !e.installed);
 
+  const categoryTabs = [
+    { key: 'all', label: 'すべて' },
+    { key: 'ai', label: 'AI & Swarm' },
+    { key: 'language', label: '言語 & AST' },
+    { key: 'tool', label: '開発ツール' },
+    { key: 'installed', label: 'インストール済み' },
+  ];
+
   return (
-    <div className="left-sidebar">
+    <div className="left-sidebar" style={{ position: 'relative', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
       <div className="sidebar-header">
         <span style={{ fontWeight: 700, fontSize: '11px', letterSpacing: '0.05em' }}>
@@ -147,7 +191,7 @@ export const ExtensionsPanel: React.FC = () => {
 
       {/* Search Bar */}
       <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--vscode-border)' }}>
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginBottom: '6px' }}>
           <Search size={13} style={{ position: 'absolute', left: '8px', color: 'var(--vscode-text-muted)' }} />
           <input
             type="text"
@@ -160,196 +204,331 @@ export const ExtensionsPanel: React.FC = () => {
               color: '#ffffff',
               fontSize: '12px',
             }}
-            placeholder="拡張機能を検索する..."
+            placeholder="拡張機能やAIスキルを検索..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-      </div>
 
-      <div className="sidebar-content" style={{ padding: '0 8px' }}>
-        {/* Installed Section */}
-        <div style={{ marginTop: '10px' }}>
-          <div
-            style={{
-              fontSize: '11px',
-              fontWeight: 700,
-              color: 'var(--vscode-text-secondary)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-              padding: '4px 6px',
-            }}
-          >
-            インストール済み ({installedList.length})
-          </div>
-
-          {installedList.map((ext) => (
-            <div
-              key={ext.id}
+        {/* Category Pills */}
+        <div style={{ display: 'flex', gap: '4px', overflowX: 'auto', paddingBottom: '2px' }}>
+          {categoryTabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setSelectedCategory(tab.key as any)}
               style={{
-                display: 'flex',
-                gap: '10px',
-                padding: '8px 6px',
-                borderRadius: '6px',
+                background: selectedCategory === tab.key ? 'var(--vscode-blue)' : 'rgba(255,255,255,0.06)',
+                color: selectedCategory === tab.key ? '#ffffff' : 'var(--vscode-text-secondary)',
+                border: 'none',
+                padding: '2px 7px',
+                borderRadius: '10px',
+                fontSize: '10px',
+                fontWeight: selectedCategory === tab.key ? 600 : 400,
                 cursor: 'pointer',
-                borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
+                whiteSpace: 'nowrap',
               }}
             >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="sidebar-content" style={{ padding: '0 8px', flex: 1, overflowY: 'auto' }}>
+        {/* Installed Section */}
+        {installedList.length > 0 && selectedCategory !== 'ai' && selectedCategory !== 'language' && selectedCategory !== 'tool' && (
+          <div style={{ marginTop: '10px' }}>
+            <div
+              style={{
+                fontSize: '11px',
+                fontWeight: 700,
+                color: 'var(--vscode-text-secondary)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                padding: '4px 6px',
+              }}
+            >
+              インストール済み ({installedList.length})
+            </div>
+
+            {installedList.map((ext) => (
               <div
+                key={ext.id}
                 style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '6px',
-                  background: 'rgba(255, 255, 255, 0.05)',
                   display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
+                  gap: '10px',
+                  padding: '8px 6px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
                 }}
+                onClick={() => setSelectedDetailExt(ext)}
               >
-                <Blocks size={18} color={ext.iconColor} />
-              </div>
-
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontWeight: 600, fontSize: '12px', color: '#ffffff' }}>
-                    {ext.name}
-                  </span>
-                  <span style={{ fontSize: '10px', color: 'var(--vscode-text-muted)' }}>
-                    {ext.version}
-                  </span>
-                </div>
-
                 <div
                   style={{
-                    fontSize: '11px',
-                    color: 'var(--vscode-text-muted)',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    marginTop: '2px',
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '6px',
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
                   }}
-                  title={ext.description}
                 >
-                  {ext.description}
+                  <Blocks size={18} color={ext.iconColor} />
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '6px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '10px', color: 'var(--vscode-text-muted)' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontWeight: 600, fontSize: '12px', color: '#ffffff' }}>
+                      {ext.name}
+                    </span>
+                    <span style={{ fontSize: '10px', color: 'var(--vscode-text-muted)' }}>
+                      {ext.version}
+                    </span>
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize: '11px',
+                      color: 'var(--vscode-text-muted)',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      marginTop: '2px',
+                    }}
+                    title={ext.description}
+                  >
+                    {ext.description}
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '6px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '10px', color: 'var(--vscode-text-muted)' }}>
+                      <span>{ext.publisher}</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                        <Star size={10} color="#facc15" fill="#facc15" />
+                        {ext.rating}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '4px' }} onClick={(e) => e.stopPropagation()}>
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        style={{ fontSize: '10px', padding: '1px 6px' }}
+                        onClick={() => toggleEnabled(ext.id)}
+                      >
+                        {ext.enabled ? '無効' : '有効'}
+                      </button>
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        style={{ fontSize: '10px', padding: '1px 4px' }}
+                        onClick={() => toggleInstall(ext.id)}
+                        title="アンインストール"
+                      >
+                        <Trash2 size={11} color="#f87171" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Recommended Section */}
+        {selectedCategory !== 'installed' && (
+          <div style={{ marginTop: '14px' }}>
+            <div
+              style={{
+                fontSize: '11px',
+                fontWeight: 700,
+                color: 'var(--vscode-text-secondary)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                padding: '4px 6px',
+              }}
+            >
+              推奨 / AI SKILL パック ({recommendedList.length})
+            </div>
+
+            {recommendedList.map((ext) => (
+              <div
+                key={ext.id}
+                style={{
+                  display: 'flex',
+                  gap: '10px',
+                  padding: '8px 6px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
+                }}
+                onClick={() => setSelectedDetailExt(ext)}
+              >
+                <div
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '6px',
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <Blocks size={18} color={ext.iconColor} />
+                </div>
+
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontWeight: 600, fontSize: '12px', color: '#ffffff' }}>
+                      {ext.name}
+                    </span>
+                    <button
+                      className="btn btn-primary btn-sm"
+                      style={{ fontSize: '10px', padding: '2px 8px', background: 'var(--vscode-blue)' }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleInstall(ext.id);
+                      }}
+                    >
+                      <Download size={10} />
+                      <span>インストール</span>
+                    </button>
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize: '11px',
+                      color: 'var(--vscode-text-muted)',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      marginTop: '2px',
+                    }}
+                    title={ext.description}
+                  >
+                    {ext.description}
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '10px', color: 'var(--vscode-text-muted)', marginTop: '4px' }}>
                     <span>{ext.publisher}</span>
+                    <span>{ext.downloads} DL</span>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
                       <Star size={10} color="#facc15" fill="#facc15" />
                       {ext.rating}
                     </span>
                   </div>
-
-                  <div style={{ display: 'flex', gap: '4px' }}>
-                    <button
-                      className="btn btn-secondary btn-sm"
-                      style={{ fontSize: '10px', padding: '1px 6px' }}
-                      onClick={() => toggleEnabled(ext.id)}
-                    >
-                      {ext.enabled ? '無効' : '有効'}
-                    </button>
-                    <button
-                      className="btn btn-secondary btn-sm"
-                      style={{ fontSize: '10px', padding: '1px 4px' }}
-                      onClick={() => toggleInstall(ext.id)}
-                      title="アンインストール"
-                    >
-                      <Trash2 size={11} color="#f87171" />
-                    </button>
-                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
+      </div>
 
-        {/* Recommended Section */}
-        <div style={{ marginTop: '16px' }}>
+      {/* Extension Detail Modal Drawer */}
+      {selectedDetailExt && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'var(--vscode-bg-surface)',
+            zIndex: 99,
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
           <div
             style={{
-              fontSize: '11px',
-              fontWeight: 700,
-              color: 'var(--vscode-text-secondary)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-              padding: '4px 6px',
+              padding: '10px 14px',
+              borderBottom: '1px solid var(--vscode-border)',
+              background: 'var(--vscode-bg-titlebar)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
             }}
           >
-            推奨 / AI SKILL パック ({recommendedList.length})
+            <span style={{ fontSize: '12px', fontWeight: 600, color: '#ffffff' }}>拡張機能の詳細</span>
+            <button className="tab-close-btn" onClick={() => setSelectedDetailExt(null)}>
+              <X size={13} />
+            </button>
           </div>
 
-          {recommendedList.map((ext) => (
-            <div
-              key={ext.id}
-              style={{
-                display: 'flex',
-                gap: '10px',
-                padding: '8px 6px',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
-              }}
-            >
+          <div style={{ padding: '16px', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
               <div
                 style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '6px',
-                  background: 'rgba(255, 255, 255, 0.05)',
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '8px',
+                  background: 'rgba(255, 255, 255, 0.06)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  flexShrink: 0,
                 }}
               >
-                <Blocks size={18} color={ext.iconColor} />
+                <Blocks size={24} color={selectedDetailExt.iconColor} />
               </div>
-
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontWeight: 600, fontSize: '12px', color: '#ffffff' }}>
-                    {ext.name}
-                  </span>
-                  <button
-                    className="btn btn-primary btn-sm"
-                    style={{ fontSize: '10px', padding: '2px 8px', background: 'var(--vscode-blue)' }}
-                    onClick={() => toggleInstall(ext.id)}
-                  >
-                    <Download size={10} />
-                    <span>インストール</span>
-                  </button>
-                </div>
-
-                <div
-                  style={{
-                    fontSize: '11px',
-                    color: 'var(--vscode-text-muted)',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    marginTop: '2px',
-                  }}
-                  title={ext.description}
-                >
-                  {ext.description}
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '10px', color: 'var(--vscode-text-muted)', marginTop: '4px' }}>
-                  <span>{ext.publisher}</span>
-                  <span>{ext.downloads} DL</span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
-                    <Star size={10} color="#facc15" fill="#facc15" />
-                    {ext.rating}
-                  </span>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '14px', color: '#ffffff' }}>{selectedDetailExt.name}</div>
+                <div style={{ fontSize: '11px', color: 'var(--vscode-text-muted)' }}>
+                  {selectedDetailExt.publisher} • {selectedDetailExt.version}
                 </div>
               </div>
             </div>
-          ))}
+
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button
+                className="btn btn-primary btn-sm"
+                style={{
+                  flex: 1,
+                  background: selectedDetailExt.installed ? '#f87171' : 'var(--vscode-blue)',
+                  padding: '6px 12px',
+                }}
+                onClick={() => {
+                  toggleInstall(selectedDetailExt.id);
+                  setSelectedDetailExt((prev) => (prev ? { ...prev, installed: !prev.installed } : null));
+                }}
+              >
+                {selectedDetailExt.installed ? 'アンインストール' : 'インストール'}
+              </button>
+              {selectedDetailExt.installed && (
+                <button
+                  className="btn btn-secondary btn-sm"
+                  style={{ padding: '6px 12px' }}
+                  onClick={() => {
+                    toggleEnabled(selectedDetailExt.id);
+                    setSelectedDetailExt((prev) => (prev ? { ...prev, enabled: !prev.enabled } : null));
+                  }}
+                >
+                  {selectedDetailExt.enabled ? '無効にする' : '有効にする'}
+                </button>
+              )}
+            </div>
+
+            <div style={{ fontSize: '12px', color: 'var(--vscode-text-secondary)', lineHeight: '1.5' }}>
+              {selectedDetailExt.description}
+            </div>
+
+            <div style={{ borderTop: '1px solid var(--vscode-border)', paddingTop: '10px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--vscode-blue)', marginBottom: '6px' }}>
+                セキュリティ & ケーパビリティ
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '11px', color: 'var(--vscode-text-muted)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <ShieldCheck size={13} color="#81b88b" />
+                  <span>Aether Zero-Trust 監査検証済み</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Sparkles size={13} color="var(--vscode-blue)" />
+                  <span>評価: {selectedDetailExt.rating} / 5.0 ({selectedDetailExt.downloads} ダウンロード)</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

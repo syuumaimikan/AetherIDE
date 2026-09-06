@@ -19,6 +19,10 @@ import {
   Trash2,
   Edit2,
   ExternalLink,
+  Filter,
+  FolderArchive,
+  Search,
+  X,
 } from 'lucide-react';
 
 interface FileExplorerProps {
@@ -237,7 +241,10 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
   const [isCreatingFile, setIsCreatingFile] = useState(false);
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [newPathName, setNewPathName] = useState('');
+  const [createParentPath, setCreateParentPath] = useState('');
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const [isFilterVisible, setIsFilterVisible] = useState(false);
+  const [filterText, setFilterText] = useState('');
 
   // Accordion Sections
   const [isFilesOpen, setIsFilesOpen] = useState(true);
@@ -264,13 +271,14 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
     e.preventDefault();
     if (!newPathName.trim()) return;
     if (isCreatingFile) {
-      onCreateFile('', newPathName.trim());
+      onCreateFile(createParentPath, newPathName.trim());
       setIsCreatingFile(false);
     } else if (isCreatingFolder) {
-      onCreateFolder('', newPathName.trim());
+      onCreateFolder(createParentPath, newPathName.trim());
       setIsCreatingFolder(false);
     }
     setNewPathName('');
+    setCreateParentPath('');
   };
 
   const displayName = workspaceName.toUpperCase();
@@ -303,6 +311,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
             className="sidebar-action-btn"
             title="新しいファイル..."
             onClick={() => {
+              setCreateParentPath('');
               setIsCreatingFile(true);
               setIsCreatingFolder(false);
             }}
@@ -313,6 +322,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
             className="sidebar-action-btn"
             title="新しいフォルダー..."
             onClick={() => {
+              setCreateParentPath('');
               setIsCreatingFolder(true);
               setIsCreatingFile(false);
             }}
@@ -326,8 +336,55 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
           >
             <RefreshCw size={13} />
           </button>
+          <button
+            className="sidebar-action-btn"
+            title={isFilterVisible ? 'フィルターを閉じる' : 'ファイル名でフィルター'}
+            onClick={() => {
+              setIsFilterVisible(!isFilterVisible);
+              if (isFilterVisible) setFilterText('');
+            }}
+          >
+            <Filter size={13} color={isFilterVisible ? 'var(--vscode-blue)' : 'inherit'} />
+          </button>
         </div>
       </div>
+
+      {/* Explorer Quick Filter Bar */}
+      {isFilterVisible && (
+        <div style={{ padding: '6px 10px', background: 'var(--vscode-bg-surface)', borderBottom: '1px solid var(--vscode-border)' }}>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <Search size={12} style={{ position: 'absolute', left: '6px', color: 'var(--vscode-text-muted)' }} />
+            <input
+              type="text"
+              className="input-text"
+              style={{
+                width: '100%',
+                paddingLeft: '24px',
+                paddingRight: '20px',
+                background: 'var(--vscode-bg-input)',
+                border: '1px solid var(--vscode-border)',
+                fontSize: '11px',
+                paddingTop: '2px',
+                paddingBottom: '2px',
+                color: '#ffffff',
+              }}
+              placeholder="ファイル名でフィルター..."
+              value={filterText}
+              onChange={(e) => setFilterText(e.target.value)}
+              autoFocus
+            />
+            {filterText && (
+              <button
+                className="tab-close-btn"
+                style={{ position: 'absolute', right: '4px' }}
+                onClick={() => setFilterText('')}
+              >
+                <X size={11} />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="sidebar-content" style={{ flex: 1, overflowY: 'auto' }}>
         {/* Workspace Files Section Header */}
@@ -540,12 +597,12 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
             border: '1px solid var(--vscode-border)',
             borderRadius: '6px',
             padding: '4px 0',
-            minWidth: '180px',
+            minWidth: '200px',
             boxShadow: '0 8px 24px rgba(0, 0, 0, 0.6)',
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          {!contextMenu.node.is_dir && (
+          {!contextMenu.node.is_dir ? (
             <div
               className="menu-entry"
               onClick={() => {
@@ -554,8 +611,36 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
               }}
             >
               <ExternalLink size={13} />
-              <span>開く</span>
+              <span>開く (Open)</span>
             </div>
+          ) : (
+            <>
+              <div
+                className="menu-entry"
+                onClick={() => {
+                  setCreateParentPath(contextMenu.node.path);
+                  setIsCreatingFile(true);
+                  setIsCreatingFolder(false);
+                  setContextMenu(null);
+                }}
+              >
+                <FilePlus size={13} color="var(--vscode-blue)" />
+                <span>新しいファイル (New File)</span>
+              </div>
+              <div
+                className="menu-entry"
+                onClick={() => {
+                  setCreateParentPath(contextMenu.node.path);
+                  setIsCreatingFolder(true);
+                  setIsCreatingFile(false);
+                  setContextMenu(null);
+                }}
+              >
+                <FolderPlus size={13} color="#dcb67a" />
+                <span>新しいフォルダー (New Folder)</span>
+              </div>
+              <div className="menu-entry separator" />
+            </>
           )}
           <div
             className="menu-entry"
@@ -590,7 +675,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
             }}
           >
             <Trash2 size={13} color="#f87171" />
-            <span>削除</span>
+            <span>削除 (Delete)</span>
           </div>
         </div>
       )}

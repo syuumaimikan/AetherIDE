@@ -571,7 +571,7 @@ export const App: React.FC = () => {
           />
         )}
 
-        {activeActivityTab === 'extensions' && <ExtensionsPanel />}
+        {activeActivityTab === 'extensions' && <ExtensionsPanel onNotification={addToast} />}
 
         {activeActivityTab === 'debug' && (
           <DebugPanel

@@ -34,6 +34,7 @@ import { AgentChatPanel } from './components/AgentChatPanel';
 import { DiffReviewModal } from './components/DiffReviewModal';
 import { KeybindingsModal } from './components/KeybindingsModal';
 import { RulesModal } from './components/RulesModal';
+import { GitGraphModal } from './components/GitGraphModal';
 import { StatusBar } from './components/StatusBar';
 import { Bot, GitBranch, MessageSquare, Shield, Sparkles } from 'lucide-react';
 
@@ -46,6 +47,7 @@ export const App: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isKeybindingsOpen, setIsKeybindingsOpen] = useState(false);
   const [isRulesOpen, setIsRulesOpen] = useState(false);
+  const [isGitGraphOpen, setIsGitGraphOpen] = useState(false);
   const [rightPanelTab, setRightPanelTab] = useState<'swarm' | 'copilot'>('swarm');
   const [activeReviewDiff, setActiveReviewDiff] = useState<{
     path: string;
@@ -138,6 +140,7 @@ export const App: React.FC = () => {
         setIsSettingsOpen(false);
         setIsKeybindingsOpen(false);
         setIsRulesOpen(false);
+        setIsGitGraphOpen(false);
         setActiveReviewDiff(null);
         return;
       }
@@ -146,6 +149,13 @@ export const App: React.FC = () => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'u') {
         e.preventDefault();
         setIsRulesOpen((prev) => !prev);
+        return;
+      }
+
+      // Git Graph Visualizer (Ctrl+Shift+G)
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'g') {
+        e.preventDefault();
+        setIsGitGraphOpen((prev) => !prev);
         return;
       }
 
@@ -366,6 +376,7 @@ export const App: React.FC = () => {
         onRunAutonomousTeam={() => handleRunAutonomousTeam()}
         onOpenKeybindings={() => setIsKeybindingsOpen(true)}
         onOpenRules={() => setIsRulesOpen(true)}
+        onOpenGitGraph={() => setIsGitGraphOpen(true)}
         onOpenFolder={handleOpenFolder}
         onOpenFile={() => setIsCommandCenterOpen(true)}
         onSaveFile={handleSaveFile}
@@ -448,6 +459,7 @@ export const App: React.FC = () => {
               const s = await TauriBridge.getGitStatus();
               setGitStatus(s);
             }}
+            onOpenGitGraph={() => setIsGitGraphOpen(true)}
             onPreviewDiff={async (filePath, staged) => {
               try {
                 const diff = await TauriBridge.getFileDiff(filePath, staged);
@@ -644,6 +656,12 @@ export const App: React.FC = () => {
         onRunTeamPipeline={() => handleRunAutonomousTeam()}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onToggleTerminal={() => setIsTerminalOpen(!isTerminalOpen)}
+        onOpenRules={() => setIsRulesOpen(true)}
+        onOpenKeybindings={() => setIsKeybindingsOpen(true)}
+        onOpenGitGraph={() => setIsGitGraphOpen(true)}
+        onOpenFolder={handleOpenFolder}
+        onNewFile={handleNewFile}
+        onSwitchMode={(mode) => setAppMode(mode)}
       />
 
       {/* Settings Modal */}
@@ -702,6 +720,12 @@ export const App: React.FC = () => {
       <RulesModal
         isOpen={isRulesOpen}
         onClose={() => setIsRulesOpen(false)}
+      />
+
+      {/* Git Graph Visualizer Modal */}
+      <GitGraphModal
+        isOpen={isGitGraphOpen}
+        onClose={() => setIsGitGraphOpen(false)}
       />
     </div>
   );

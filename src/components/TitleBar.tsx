@@ -29,6 +29,7 @@ interface TitleBarProps {
   onRunAutonomousTeam: () => void;
   onOpenKeybindings?: () => void;
   onOpenRules?: () => void;
+  onOpenGitGraph?: () => void;
   onOpenFolder?: () => void;
   onOpenFile?: () => void;
   onSaveFile?: () => void;
@@ -46,6 +47,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
   onRunAutonomousTeam,
   onOpenKeybindings,
   onOpenRules,
+  onOpenGitGraph,
   onOpenFolder,
   onOpenFile,
   onSaveFile,
@@ -222,6 +224,10 @@ export const TitleBar: React.FC<TitleBarProps> = ({
                 <div className="menu-entry" onClick={() => handleItemClick(onOpenRules)}>
                   <span>AI ルール設定 (.aether/rules.md)</span>
                   <span className="menu-shortcut">Ctrl+Shift+U</span>
+                </div>
+                <div className="menu-entry" onClick={() => handleItemClick(onOpenGitGraph)}>
+                  <span>Git Graph (コミット履歴)</span>
+                  <span className="menu-shortcut">Ctrl+Shift+G</span>
                 </div>
                 <div className="menu-entry separator" />
                 <div className="menu-entry" onClick={() => handleItemClick(() => setAppMode('normal'))}>

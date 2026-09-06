@@ -23,6 +23,7 @@ interface GitPanelProps {
   onCommit: (message: string) => void;
   onRefresh: () => void;
   onPreviewDiff?: (filePath: string, staged: boolean) => void;
+  onOpenGitGraph?: () => void;
 }
 
 export const GitPanel: React.FC<GitPanelProps> = ({
@@ -33,6 +34,7 @@ export const GitPanel: React.FC<GitPanelProps> = ({
   onCommit,
   onRefresh,
   onPreviewDiff,
+  onOpenGitGraph,
 }) => {
   const [commitMessage, setCommitMessage] = useState('');
   const [isGeneratingMessage, setIsGeneratingMessage] = useState(false);
@@ -159,6 +161,16 @@ export const GitPanel: React.FC<GitPanelProps> = ({
           )}
         </div>
         <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+          {onOpenGitGraph && (
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={onOpenGitGraph}
+              title="Git Graph : コミット履歴グラフを表示"
+            >
+              <GitCommit size={12} color="var(--vscode-blue)" />
+              <span style={{ fontSize: '11px' }}>Graph</span>
+            </button>
+          )}
           <button
             className="btn btn-secondary btn-sm"
             onClick={onRefresh}

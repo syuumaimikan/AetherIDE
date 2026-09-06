@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FileNode } from '../types';
 import {
   ChevronDown,
@@ -15,6 +15,10 @@ import {
   Settings,
   GitBranch,
   FolderTree,
+  Copy,
+  Trash2,
+  Edit2,
+  ExternalLink,
 } from 'lucide-react';
 
 interface FileExplorerProps {
@@ -29,13 +33,20 @@ interface FileExplorerProps {
   onOpenFolder?: () => void;
 }
 
+interface ContextMenuState {
+  x: number;
+  y: number;
+  node: FileNode;
+}
+
 const FileTreeNode: React.FC<{
   node: FileNode;
   depth: number;
   activeFilePath?: string;
   onSelectFile: (path: string) => void;
   onDeletePath: (path: string) => void;
-}> = ({ node, depth, activeFilePath, onSelectFile, onDeletePath }) => {
+  onContextMenu: (e: React.MouseEvent, node: FileNode) => void;
+}> = ({ node, depth, activeFilePath, onSelectFile, onDeletePath, onContextMenu }) => {
   const [isOpen, setIsOpen] = useState(true);
 
   const getFileIcon = (name: string) => {
@@ -85,6 +96,7 @@ const FileTreeNode: React.FC<{
             color: 'var(--vscode-text)',
           }}
           onClick={() => setIsOpen(!isOpen)}
+          onContextMenu={(e) => onContextMenu(e, node)}
         >
           <span style={{ display: 'inline-flex', opacity: 0.8 }}>
             {isOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
@@ -110,6 +122,7 @@ const FileTreeNode: React.FC<{
                 activeFilePath={activeFilePath}
                 onSelectFile={onSelectFile}
                 onDeletePath={onDeletePath}
+                onContextMenu={onContextMenu}
               />
             ))}
           </div>
@@ -133,6 +146,7 @@ const FileTreeNode: React.FC<{
         background: isSelected ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
       }}
       onClick={() => onSelectFile(node.path)}
+      onContextMenu={(e) => onContextMenu(e, node)}
     >
       <span style={{ display: 'inline-flex', flexShrink: 0 }}>
         {getFileIcon(node.name)}
@@ -165,6 +179,23 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
   const [isCreatingFile, setIsCreatingFile] = useState(false);
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [newPathName, setNewPathName] = useState('');
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+
+  useEffect(() => {
+    const handleCloseContext = () => setContextMenu(null);
+    window.addEventListener('click', handleCloseContext);
+    return () => window.removeEventListener('click', handleCloseContext);
+  }, []);
+
+  const handleContextMenu = (e: React.MouseEvent, node: FileNode) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      node,
+    });
+  };
 
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -182,7 +213,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
   const displayName = workspaceName.toUpperCase();
 
   return (
-    <div className="left-sidebar">
+    <div className="left-sidebar" style={{ position: 'relative' }}>
       {/* VS Code Explorer Header */}
       <div className="sidebar-header">
         <span style={{ fontWeight: 700, fontSize: '11px', letterSpacing: '0.05em' }}>
@@ -255,6 +286,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
               activeFilePath={activeFilePath}
               onSelectFile={onSelectFile}
               onDeletePath={onDeletePath}
+              onContextMenu={handleContextMenu}
             />
           </div>
         ) : (
@@ -289,6 +321,73 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
           </div>
         )}
       </div>
+
+      {/* Right-click Context Menu */}
+      {contextMenu && (
+        <div
+          style={{
+            position: 'fixed',
+            top: contextMenu.y,
+            left: contextMenu.x,
+            zIndex: 9999,
+            backgroundColor: 'var(--vscode-bg-surface)',
+            border: '1px solid var(--vscode-border)',
+            borderRadius: '6px',
+            padding: '4px 0',
+            minWidth: '180px',
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.6)',
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {!contextMenu.node.is_dir && (
+            <div
+              className="menu-entry"
+              onClick={() => {
+                onSelectFile(contextMenu.node.path);
+                setContextMenu(null);
+              }}
+            >
+              <ExternalLink size={13} />
+              <span>開く</span>
+            </div>
+          )}
+          <div
+            className="menu-entry"
+            onClick={() => {
+              navigator.clipboard.writeText(contextMenu.node.path);
+              setContextMenu(null);
+            }}
+          >
+            <Copy size={13} />
+            <span>パスをコピー</span>
+          </div>
+          <div
+            className="menu-entry"
+            onClick={() => {
+              const rel = contextMenu.node.path.split(/[\\/]/).slice(-2).join('/');
+              navigator.clipboard.writeText(rel);
+              setContextMenu(null);
+            }}
+          >
+            <Copy size={13} />
+            <span>相対パスをコピー</span>
+          </div>
+          <div className="menu-entry separator" />
+          <div
+            className="menu-entry"
+            style={{ color: '#f87171' }}
+            onClick={() => {
+              if (confirm(`本当に削除しますか: ${contextMenu.node.name}`)) {
+                onDeletePath(contextMenu.node.path);
+              }
+              setContextMenu(null);
+            }}
+          >
+            <Trash2 size={13} color="#f87171" />
+            <span>削除</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

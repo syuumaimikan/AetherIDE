@@ -1,10 +1,26 @@
 import React, { useEffect, useState } from 'react';
-import { Search, Terminal, Sparkles, FileText, Settings, Shield } from 'lucide-react';
+import {
+  Search,
+  Terminal,
+  Sparkles,
+  FileText,
+  Settings,
+  Shield,
+  GitBranch,
+  GitCommit,
+  FolderOpen,
+  FilePlus,
+  Keyboard,
+  Cpu,
+  Bot,
+  Layers,
+  BookOpen,
+} from 'lucide-react';
 
 export interface CommandItem {
   id: string;
   title: string;
-  category: 'File' | 'Action' | 'Agent' | 'View';
+  category: 'File' | 'Action' | 'Agent' | 'View' | 'Git' | 'Preferences' | 'Help';
   icon?: React.ReactNode;
   action: () => void;
 }
@@ -17,6 +33,12 @@ interface CommandCenterProps {
   onRunTeamPipeline: () => void;
   onOpenSettings: () => void;
   onToggleTerminal: () => void;
+  onOpenRules?: () => void;
+  onOpenKeybindings?: () => void;
+  onOpenGitGraph?: () => void;
+  onOpenFolder?: () => void;
+  onNewFile?: () => void;
+  onSwitchMode?: (mode: 'normal' | 'agent' | 'os') => void;
 }
 
 export const CommandCenter: React.FC<CommandCenterProps> = ({
@@ -27,6 +49,12 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
   onRunTeamPipeline,
   onOpenSettings,
   onToggleTerminal,
+  onOpenRules,
+  onOpenKeybindings,
+  onOpenGitGraph,
+  onOpenFolder,
+  onNewFile,
+  onSwitchMode,
 }) => {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -40,19 +68,89 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
   const baseCommands: CommandItem[] = [
     {
       id: 'cmd-pipeline',
-      title: 'Run 5-Stage Autonomous Development Team (Architect -> Coder -> Test -> Review -> Security)',
+      title: 'Agent: 5-Stage Autonomous Development Swarm 実行 (Architect -> Coder -> QA -> Audit -> Security)',
       category: 'Agent',
-      icon: <Sparkles size={14} color="var(--accent-primary)" />,
+      icon: <Sparkles size={14} color="var(--vscode-blue)" />,
       action: () => {
         onRunTeamPipeline();
         onClose();
       },
     },
     {
-      id: 'cmd-terminal',
-      title: 'Toggle Sandboxed Terminal Dock',
+      id: 'cmd-rules',
+      title: 'AI: プロジェクトルール & システムプロンプト編集 (.aether/rules.md)',
+      category: 'Agent',
+      icon: <BookOpen size={14} color="#81b88b" />,
+      action: () => {
+        if (onOpenRules) onOpenRules();
+        onClose();
+      },
+    },
+    {
+      id: 'cmd-git-graph',
+      title: 'Git: Git Graph (コミット履歴 & ブランチグラフを表示)',
+      category: 'Git',
+      icon: <GitCommit size={14} color="#38bdf8" />,
+      action: () => {
+        if (onOpenGitGraph) onOpenGitGraph();
+        onClose();
+      },
+    },
+    {
+      id: 'cmd-open-folder',
+      title: 'File: フォルダーを開く... (Native OS Dialog)',
+      category: 'File',
+      icon: <FolderOpen size={14} color="#dcb67a" />,
+      action: () => {
+        if (onOpenFolder) onOpenFolder();
+        onClose();
+      },
+    },
+    {
+      id: 'cmd-new-file',
+      title: 'File: 新しいファイルを作成',
+      category: 'File',
+      icon: <FilePlus size={14} color="#38bdf8" />,
+      action: () => {
+        if (onNewFile) onNewFile();
+        onClose();
+      },
+    },
+    {
+      id: 'cmd-mode-normal',
+      title: 'View: Normal IDE モードに切り替え (Pure High-Speed Editor)',
       category: 'View',
-      icon: <Terminal size={14} color="var(--accent-cyan)" />,
+      icon: <Layers size={14} color="var(--vscode-text-secondary)" />,
+      action: () => {
+        if (onSwitchMode) onSwitchMode('normal');
+        onClose();
+      },
+    },
+    {
+      id: 'cmd-mode-agent',
+      title: 'View: AI Agent Swarm モードに切り替え (Multi-Agent Team Orchestration)',
+      category: 'View',
+      icon: <Bot size={14} color="var(--vscode-blue)" />,
+      action: () => {
+        if (onSwitchMode) onSwitchMode('agent');
+        onClose();
+      },
+    },
+    {
+      id: 'cmd-mode-os',
+      title: 'View: AI Agent OS モードに切り替え (Host Process & Network Control Cockpit)',
+      category: 'View',
+      icon: <Cpu size={14} color="#a855f7" />,
+      action: () => {
+        if (onSwitchMode) onSwitchMode('os');
+        onClose();
+      },
+    },
+    {
+      id: 'cmd-terminal',
+      title: 'View: サンドボックス統合ターミナル ドックの切り替え',
+      category: 'View',
+      icon: <Terminal size={14} color="#81b88b" />,
       action: () => {
         onToggleTerminal();
         onClose();
@@ -60,11 +158,21 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
     },
     {
       id: 'cmd-settings',
-      title: 'Open Settings & AI Model Provider Configurations',
-      category: 'Action',
-      icon: <Settings size={14} color="var(--text-secondary)" />,
+      title: 'Preferences: 設定 & AI モデルプロバイダー構成 (OpenAI / Anthropic / Local LLM)',
+      category: 'Preferences',
+      icon: <Settings size={14} color="var(--vscode-text-secondary)" />,
       action: () => {
         onOpenSettings();
+        onClose();
+      },
+    },
+    {
+      id: 'cmd-keybindings',
+      title: 'Help: キーボード ショートカット リファレンス (Keybindings)',
+      category: 'Help',
+      icon: <Keyboard size={14} color="var(--vscode-text-secondary)" />,
+      action: () => {
+        if (onOpenKeybindings) onOpenKeybindings();
         onClose();
       },
     },

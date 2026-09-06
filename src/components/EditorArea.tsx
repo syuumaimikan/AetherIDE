@@ -1,7 +1,18 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Editor, { OnMount } from '@monaco-editor/react';
 import { OpenFileTab } from '../types';
-import { Sparkles, X, Zap } from 'lucide-react';
+import {
+  Sparkles,
+  X,
+  Zap,
+  Check,
+  RotateCcw,
+  Bot,
+  Send,
+  Sliders,
+  FileCode,
+} from 'lucide-react';
+import { TauriBridge } from '../services/tauriBridge';
 
 interface EditorAreaProps {
   openTabs: OpenFileTab[];
@@ -26,23 +37,18 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
   onOpenFolder,
   onOpenCommandCenter,
 }) => {
-  const [showAiInput, setShowAiInput] = useState(false);
+  const [showAiFloatingBar, setShowAiFloatingBar] = useState(false);
   const [aiInstruction, setAiInstruction] = useState('');
+  const [selectedModel, setSelectedModel] = useState('claude-3-7-sonnet');
+  const [isGenerating, setIsGenerating] = useState(false);
   const [inlineAiEnabled, setInlineAiEnabled] = useState(true);
+  const [pendingDiff, setPendingDiff] = useState<{ original: string; modified: string } | null>(null);
 
   const editorRef = useRef<any>(null);
   const monacoRef = useRef<any>(null);
   const providerDisposableRef = useRef<any>(null);
 
   const activeTab = openTabs[activeTabIndex];
-
-  const handleAiSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!aiInstruction.trim()) return;
-    onAiInlineEdit(aiInstruction.trim());
-    setAiInstruction('');
-    setShowAiInput(false);
-  };
 
   const getMonacoLanguage = (path: string): string => {
     const p = path.toLowerCase();
@@ -61,6 +67,11 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
   const handleEditorDidMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
+
+    // Ctrl+I shortcut inside Monaco
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyI, () => {
+      setShowAiFloatingBar((prev) => !prev);
+    });
 
     if (providerDisposableRef.current) {
       providerDisposableRef.current.dispose();
@@ -127,6 +138,45 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
     );
   };
 
+  const handleFloatingAiSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!aiInstruction.trim() || !activeTab) return;
+
+    setIsGenerating(true);
+    try {
+      const prompt = `[File: ${activeTab.path}]\n\`\`\`${activeTab.language}\n${activeTab.content}\n\`\`\`\n\nInstruction: ${aiInstruction.trim()}`;
+      const response = await TauriBridge.runAiCompletion(prompt, selectedModel);
+
+      // Extract code block or response
+      let code = response;
+      const match = response.match(/```(?:\w+)?\s*([\s\S]*?)```/);
+      if (match) {
+        code = match[1];
+      }
+
+      setPendingDiff({
+        original: activeTab.content,
+        modified: code,
+      });
+      setShowAiFloatingBar(false);
+    } catch (err) {
+      console.error('AI Inline generation error:', err);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleAcceptDiff = () => {
+    if (pendingDiff) {
+      onContentChange(pendingDiff.modified);
+      setPendingDiff(null);
+    }
+  };
+
+  const handleRejectDiff = () => {
+    setPendingDiff(null);
+  };
+
   return (
     <div className="editor-workspace">
       {/* VS Code Tab Bar */}
@@ -172,57 +222,140 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
               <span>Ghost AI: {inlineAiEnabled ? 'ON' : 'OFF'}</span>
             </button>
             <button
-              className="btn btn-secondary btn-sm"
-              onClick={() => setShowAiInput(!showAiInput)}
-              title="Inline AI Assistant (Ctrl+I)"
+              className={`btn btn-sm ${showAiFloatingBar ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setShowAiFloatingBar(!showAiFloatingBar)}
+              title="Cursor風 インライン AI 編集 (Ctrl+I)"
+              style={{ fontSize: '11px', padding: '2px 8px' }}
             >
-              <Sparkles size={12} color="var(--vscode-blue)" />
-              <span>AI Edit</span>
+              <Sparkles size={11} color="var(--vscode-blue)" />
+              <span>AI Edit (Ctrl+I)</span>
             </button>
           </div>
         )}
       </div>
 
-      {/* Inline AI Edit Prompt Bar */}
-      {showAiInput && (
-        <form
-          onSubmit={handleAiSubmit}
+      {/* Cursor-style Floating Inline AI Prompt Bar */}
+      {showAiFloatingBar && (
+        <div
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '6px 12px',
+            position: 'absolute',
+            top: '45px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 100,
+            width: '560px',
+            maxWidth: '90%',
             background: 'var(--vscode-bg-surface)',
-            borderBottom: '1px solid var(--vscode-blue)',
+            border: '1px solid var(--vscode-blue)',
+            borderRadius: '8px',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.7)',
+            padding: '10px 14px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
           }}
         >
-          <Sparkles size={14} color="var(--vscode-blue)" />
-          <input
-            type="text"
-            className="input-text"
-            style={{
-              flex: 1,
-              background: 'var(--vscode-bg-input)',
-              border: '1px solid var(--vscode-border)',
-              color: '#ffffff',
-              fontSize: '12px',
-            }}
-            placeholder="AIにリファクタリングやコード生成を依頼 (例: ドキュメントコメントを追加して)..."
-            value={aiInstruction}
-            onChange={(e) => setAiInstruction(e.target.value)}
-            autoFocus
-          />
-          <button type="submit" className="btn btn-primary btn-sm">
-            生成
-          </button>
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            onClick={() => setShowAiInput(false)}
-          >
-            キャンセル
-          </button>
-        </form>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, color: 'var(--vscode-blue)' }}>
+              <Sparkles size={14} />
+              <span>Inline Code Assistant</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <select
+                value={selectedModel}
+                onChange={(e) => setSelectedModel(e.target.value)}
+                style={{
+                  fontSize: '11px',
+                  background: 'var(--vscode-bg-input)',
+                  border: '1px solid var(--vscode-border)',
+                  color: 'var(--vscode-text)',
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                }}
+              >
+                <option value="claude-3-7-sonnet">Claude 3.7 Sonnet</option>
+                <option value="gpt-4o">GPT-4o</option>
+                <option value="deepseek-r1">DeepSeek-R1</option>
+                <option value="ollama-llama-3-3">Ollama Local</option>
+              </select>
+              <button
+                className="tab-close-btn"
+                onClick={() => setShowAiFloatingBar(false)}
+                title="閉じる (Esc)"
+              >
+                <X size={13} />
+              </button>
+            </div>
+          </div>
+
+          <form onSubmit={handleFloatingAiSubmit} style={{ display: 'flex', gap: '6px' }}>
+            <input
+              type="text"
+              className="input-text"
+              style={{
+                flex: 1,
+                background: 'var(--vscode-bg-input)',
+                border: '1px solid var(--vscode-border)',
+                color: '#ffffff',
+                fontSize: '12px',
+                padding: '6px 10px',
+              }}
+              placeholder="指示を入力 (例: エラーハンドリングを追加、型ガードを記述、テストを追加)..."
+              value={aiInstruction}
+              onChange={(e) => setAiInstruction(e.target.value)}
+              autoFocus
+            />
+            <button
+              type="submit"
+              disabled={isGenerating || !aiInstruction.trim()}
+              className="btn btn-primary btn-sm"
+              style={{ background: 'var(--vscode-blue)', padding: '6px 12px' }}
+            >
+              {isGenerating ? '生成中...' : '生成'}
+            </button>
+          </form>
+        </div>
+      )}
+
+      {/* Pending Diff Acceptance Bar */}
+      {pendingDiff && (
+        <div
+          style={{
+            background: 'var(--vscode-bg-surface)',
+            borderBottom: '1px solid var(--vscode-blue)',
+            padding: '6px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            zIndex: 90,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
+            <span style={{ color: 'var(--vscode-blue)', fontWeight: 600 }}>AI コードパッチ生成完了</span>
+            <span style={{ color: 'var(--vscode-text-muted)', fontSize: '11px' }}>
+              差分をプレビュー中。変更を採用しますか？
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: '6px' }}>
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={handleAcceptDiff}
+              style={{ background: '#81b88b', color: '#181818', fontWeight: 600 }}
+              title="変更を採用 (Ctrl+Enter)"
+            >
+              <Check size={12} />
+              <span>採用 (Accept)</span>
+            </button>
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={handleRejectDiff}
+              title="変更を破棄 (Esc)"
+            >
+              <RotateCcw size={12} />
+              <span>破棄 (Reject)</span>
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Editor Content or VS Code Watermark Welcome Screen */}
@@ -233,8 +366,12 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
               height="100%"
               theme="vs-dark"
               language={getMonacoLanguage(activeTab.path)}
-              value={activeTab.content}
-              onChange={(val) => onContentChange(val || '')}
+              value={pendingDiff ? pendingDiff.modified : activeTab.content}
+              onChange={(val) => {
+                if (!pendingDiff) {
+                  onContentChange(val || '');
+                }
+              }}
               onMount={handleEditorDidMount}
               options={{
                 fontFamily: "'JetBrains Mono', Consolas, 'Courier New', monospace",

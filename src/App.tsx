@@ -31,6 +31,7 @@ import { AgentOsCockpit } from './components/AgentOsCockpit';
 import { AgentChatPanel } from './components/AgentChatPanel';
 import { DiffReviewModal } from './components/DiffReviewModal';
 import { KeybindingsModal } from './components/KeybindingsModal';
+import { RulesModal } from './components/RulesModal';
 import { StatusBar } from './components/StatusBar';
 import { Bot, GitBranch, MessageSquare, Shield, Sparkles } from 'lucide-react';
 
@@ -42,6 +43,7 @@ export const App: React.FC = () => {
   const [isCommandCenterOpen, setIsCommandCenterOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isKeybindingsOpen, setIsKeybindingsOpen] = useState(false);
+  const [isRulesOpen, setIsRulesOpen] = useState(false);
   const [rightPanelTab, setRightPanelTab] = useState<'swarm' | 'copilot'>('swarm');
   const [activeReviewDiff, setActiveReviewDiff] = useState<{
     path: string;
@@ -133,7 +135,15 @@ export const App: React.FC = () => {
         setIsCommandCenterOpen(false);
         setIsSettingsOpen(false);
         setIsKeybindingsOpen(false);
+        setIsRulesOpen(false);
         setActiveReviewDiff(null);
+        return;
+      }
+
+      // Rules Manager (Ctrl+Shift+U)
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'u') {
+        e.preventDefault();
+        setIsRulesOpen((prev) => !prev);
         return;
       }
 
@@ -353,6 +363,7 @@ export const App: React.FC = () => {
         toggleRightSidebar={() => setRightPanelTab((prev) => (prev === 'copilot' ? 'swarm' : 'copilot'))}
         onRunAutonomousTeam={() => handleRunAutonomousTeam()}
         onOpenKeybindings={() => setIsKeybindingsOpen(true)}
+        onOpenRules={() => setIsRulesOpen(true)}
         onOpenFolder={handleOpenFolder}
         onOpenFile={() => setIsCommandCenterOpen(true)}
         onSaveFile={handleSaveFile}
@@ -673,6 +684,12 @@ export const App: React.FC = () => {
       <KeybindingsModal
         isOpen={isKeybindingsOpen}
         onClose={() => setIsKeybindingsOpen(false)}
+      />
+
+      {/* AI Rules & Architecture Standards Modal */}
+      <RulesModal
+        isOpen={isRulesOpen}
+        onClose={() => setIsRulesOpen(false)}
       />
     </div>
   );

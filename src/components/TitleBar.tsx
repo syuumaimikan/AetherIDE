@@ -28,6 +28,7 @@ interface TitleBarProps {
   toggleRightSidebar?: () => void;
   onRunAutonomousTeam: () => void;
   onOpenKeybindings?: () => void;
+  onOpenRules?: () => void;
   onOpenFolder?: () => void;
   onOpenFile?: () => void;
   onSaveFile?: () => void;
@@ -44,6 +45,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
   toggleRightSidebar,
   onRunAutonomousTeam,
   onOpenKeybindings,
+  onOpenRules,
   onOpenFolder,
   onOpenFile,
   onSaveFile,
@@ -215,6 +217,11 @@ export const TitleBar: React.FC<TitleBarProps> = ({
                 <div className="menu-entry" onClick={() => handleItemClick(toggleRightSidebar)}>
                   <span>セカンダリ サイドバーの切り替え</span>
                   <span className="menu-shortcut">Ctrl+Alt+B</span>
+                </div>
+                <div className="menu-entry separator" />
+                <div className="menu-entry" onClick={() => handleItemClick(onOpenRules)}>
+                  <span>AI ルール設定 (.aether/rules.md)</span>
+                  <span className="menu-shortcut">Ctrl+Shift+U</span>
                 </div>
                 <div className="menu-entry separator" />
                 <div className="menu-entry" onClick={() => handleItemClick(() => setAppMode('normal'))}>

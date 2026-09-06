@@ -239,14 +239,20 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
     },
   }));
 
-  const allItems = query.startsWith('@')
+  const isCommandMode = query.startsWith('>');
+  const isSymbolMode = query.startsWith('@');
+  const cleanQuery = query.replace(/^[>@]\s*/, '').toLowerCase();
+
+  const allItems = isSymbolMode
     ? symbolCommands
-    : [...baseCommands, ...symbolCommands, ...fileCommands];
+    : isCommandMode
+    ? baseCommands
+    : [...fileCommands, ...baseCommands, ...symbolCommands];
 
   const filtered = allItems.filter(
     (item) =>
-      item.title.toLowerCase().includes(query.toLowerCase().replace('@', '')) ||
-      item.category.toLowerCase().includes(query.toLowerCase())
+      item.title.toLowerCase().includes(cleanQuery) ||
+      item.category.toLowerCase().includes(cleanQuery)
   );
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -274,24 +280,30 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
         onKeyDown={handleKeyDown}
       >
         <div className="command-input-wrapper">
-          <Search size={16} color="var(--accent-primary)" />
+          <Search size={16} color="var(--vscode-blue)" />
           <input
             type="text"
             className="command-input"
-            placeholder="Type a command or filename..."
+            placeholder={
+              isCommandMode
+                ? '実行するコマンド名を入力...'
+                : isSymbolMode
+                ? '記号・関数・構造体名を入力 (@)...'
+                : 'コマンド ( > ), 記号 ( @ ), またはファイル名を入力...'
+            }
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             autoFocus
           />
-          <kbd style={{ fontSize: '10px', background: 'var(--bg-app)', padding: '2px 6px', borderRadius: 4 }}>
-            ESC to close
+          <kbd style={{ fontSize: '10px', background: 'var(--vscode-bg-app)', padding: '2px 6px', borderRadius: 4, color: 'var(--vscode-text-muted)' }}>
+            ESC
           </kbd>
         </div>
 
         <div className="command-list">
           {filtered.length === 0 ? (
-            <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px' }}>
-              No matching commands or files.
+            <div style={{ padding: '16px', textAlign: 'center', color: 'var(--vscode-text-muted)', fontSize: '12px' }}>
+              一致するコマンドまたはファイルは見つかりませんでした。
             </div>
           ) : (
             filtered.map((item, idx) => (

@@ -578,6 +578,10 @@ export const App: React.FC = () => {
             onStartDebug={(config) => {
               setIsTerminalOpen(true);
             }}
+            onOpenFileAtLine={(path, line) => {
+              handleOpenFile(path);
+              if (line) setEditorTargetLine({ line, timestamp: Date.now() });
+            }}
           />
         )}
 

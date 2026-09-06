@@ -294,6 +294,27 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleCloseOtherTabs = (index: number) => {
+    const kept = openTabs[index];
+    if (kept) {
+      setOpenTabs([kept]);
+      setActiveTabIndex(0);
+    }
+  };
+
+  const handleCloseRightTabs = (index: number) => {
+    const nextTabs = openTabs.slice(0, index + 1);
+    setOpenTabs(nextTabs);
+    if (activeTabIndex > index) {
+      setActiveTabIndex(index);
+    }
+  };
+
+  const handleCloseAllTabs = () => {
+    setOpenTabs([]);
+    setActiveTabIndex(-1);
+  };
+
   const handleContentChange = (newContent: string) => {
     if (activeTabIndex < 0 || activeTabIndex >= openTabs.length) return;
     setOpenTabs((prev) => {
@@ -547,6 +568,9 @@ export const App: React.FC = () => {
                 targetLine={editorTargetLine}
                 onSelectTab={setActiveTabIndex}
                 onCloseTab={handleCloseTab}
+                onCloseOtherTabs={handleCloseOtherTabs}
+                onCloseRightTabs={handleCloseRightTabs}
+                onCloseAllTabs={handleCloseAllTabs}
                 onContentChange={handleContentChange}
                 onSave={handleSaveFile}
                 onAiInlineEdit={handleAiInlineEdit}

@@ -27,6 +27,9 @@ interface EditorAreaProps {
   targetLine?: { line: number; timestamp: number } | null;
   onSelectTab: (index: number) => void;
   onCloseTab: (index: number) => void;
+  onCloseOtherTabs?: (index: number) => void;
+  onCloseRightTabs?: (index: number) => void;
+  onCloseAllTabs?: () => void;
   onContentChange: (newContent: string) => void;
   onSave: () => void;
   onAiInlineEdit: (instruction: string) => void;
@@ -284,6 +287,9 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
   targetLine,
   onSelectTab,
   onCloseTab,
+  onCloseOtherTabs,
+  onCloseRightTabs,
+  onCloseAllTabs,
   onContentChange,
   onSave,
   onAiInlineEdit,
@@ -303,10 +309,19 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
   const [splitTabIndex, setSplitTabIndex] = useState<number>(0);
   const [isMarkdownPreview, setIsMarkdownPreview] = useState(false);
   const [secondaryPreview, setSecondaryPreview] = useState(false);
+  const [tabContextMenu, setTabContextMenu] = useState<{ x: number; y: number; tabIndex: number } | null>(null);
 
   const editorRef = useRef<any>(null);
   const monacoRef = useRef<any>(null);
   const providerDisposableRef = useRef<any>(null);
+
+  useEffect(() => {
+    const handleOutsideClick = () => {
+      setTabContextMenu(null);
+    };
+    window.addEventListener('click', handleOutsideClick);
+    return () => window.removeEventListener('click', handleOutsideClick);
+  }, []);
 
   const activeTab = openTabs[activeTabIndex];
   const secondaryTab = openTabs[splitTabIndex] || activeTab;
@@ -460,6 +475,11 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
             key={tab.path}
             className={`editor-tab ${idx === activeTabIndex ? 'active' : ''}`}
             onClick={() => onSelectTab(idx)}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setTabContextMenu({ x: e.clientX, y: e.clientY, tabIndex: idx });
+            }}
           >
             <span>{tab.name}</span>
             {tab.isModified && (
@@ -483,6 +503,78 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
             </button>
           </div>
         ))}
+
+        {/* Tab Context Menu Popup */}
+        {tabContextMenu && (
+          <div
+            style={{
+              position: 'fixed',
+              top: tabContextMenu.y,
+              left: tabContextMenu.x,
+              background: 'var(--vscode-bg-surface)',
+              border: '1px solid var(--vscode-border)',
+              borderRadius: '6px',
+              padding: '4px 0',
+              minWidth: '190px',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
+              zIndex: 9999,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              className="menu-entry"
+              style={{ padding: '6px 12px', fontSize: '12px', cursor: 'pointer' }}
+              onClick={() => {
+                onCloseTab(tabContextMenu.tabIndex);
+                setTabContextMenu(null);
+              }}
+            >
+              タブを閉じる (Close)
+            </div>
+            <div
+              className="menu-entry"
+              style={{ padding: '6px 12px', fontSize: '12px', cursor: 'pointer' }}
+              onClick={() => {
+                onCloseOtherTabs?.(tabContextMenu.tabIndex);
+                setTabContextMenu(null);
+              }}
+            >
+              他のタブを閉じる (Close Others)
+            </div>
+            <div
+              className="menu-entry"
+              style={{ padding: '6px 12px', fontSize: '12px', cursor: 'pointer' }}
+              onClick={() => {
+                onCloseRightTabs?.(tabContextMenu.tabIndex);
+                setTabContextMenu(null);
+              }}
+            >
+              右側のタブを閉じる (Close to Right)
+            </div>
+            <div
+              className="menu-entry"
+              style={{ padding: '6px 12px', fontSize: '12px', cursor: 'pointer' }}
+              onClick={() => {
+                onCloseAllTabs?.();
+                setTabContextMenu(null);
+              }}
+            >
+              すべてのタブを閉じる (Close All)
+            </div>
+            <div style={{ height: '1px', background: 'var(--vscode-border)', margin: '4px 0' }} />
+            <div
+              className="menu-entry"
+              style={{ padding: '6px 12px', fontSize: '12px', cursor: 'pointer' }}
+              onClick={() => {
+                const tab = openTabs[tabContextMenu.tabIndex];
+                if (tab) navigator.clipboard.writeText(tab.path);
+                setTabContextMenu(null);
+              }}
+            >
+              パスをコピー (Copy Path)
+            </div>
+          </div>
+        )}
 
         {openTabs.length > 0 && (
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px', paddingRight: '8px' }}>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Settings,
   X,
@@ -44,7 +44,48 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [blockDangerousCommands, setBlockDangerousCommands] = useState(true);
   const [isSavedNotice, setIsSavedNotice] = useState(false);
 
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('aether_ide_settings');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.selectedProvider) setSelectedProvider(parsed.selectedProvider);
+        if (parsed.selectedModel) setSelectedModel(parsed.selectedModel);
+        if (parsed.apiKey) setApiKey(parsed.apiKey);
+        if (parsed.fontSize) setFontSize(parsed.fontSize);
+        if (parsed.tabSize) setTabSize(parsed.tabSize);
+        if (parsed.wordWrap) setWordWrap(parsed.wordWrap);
+        if (parsed.preferredShell) setPreferredShell(parsed.preferredShell);
+        if (parsed.autoApproveSafeReads !== undefined) setAutoApproveSafeReads(parsed.autoApproveSafeReads);
+        if (parsed.blockDangerousCommands !== undefined) setBlockDangerousCommands(parsed.blockDangerousCommands);
+      }
+    } catch (e) {
+      console.error('Failed to load settings from localStorage:', e);
+    }
+  }, []);
+
   const handleSave = () => {
+    try {
+      localStorage.setItem(
+        'aether_ide_settings',
+        JSON.stringify({
+          selectedProvider,
+          selectedModel,
+          apiKey,
+          temperature,
+          preferredShell,
+          fontSize,
+          tabSize,
+          wordWrap,
+          minimap,
+          autoSave,
+          autoApproveSafeReads,
+          blockDangerousCommands,
+        })
+      );
+    } catch (e) {
+      console.error('Failed to save settings to localStorage:', e);
+    }
     setIsSavedNotice(true);
     setTimeout(() => {
       setIsSavedNotice(false);

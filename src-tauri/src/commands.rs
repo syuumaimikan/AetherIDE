@@ -63,6 +63,45 @@ pub async fn set_workspace_root(state: State<'_, AppState>, new_root: String) ->
     Ok(state.workspace.get_info().await)
 }
 
+#[tauri::command]
+pub async fn open_folder_dialog(state: State<'_, AppState>) -> Result<Option<WorkspaceInfo>, String> {
+    #[cfg(target_os = "windows")]
+    let output = tokio::process::Command::new("powershell")
+        .args([
+            "-NoProfile",
+            "-Command",
+            "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Add-Type -AssemblyName System.Windows.Forms; $f = New-Object System.Windows.Forms.FolderBrowserDialog; $f.Description = 'Select Workspace Root Folder'; if($f.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK){ $f.SelectedPath }",
+        ])
+        .output()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    #[cfg(not(target_os = "windows"))]
+    let output = tokio::process::Command::new("zenity")
+        .args(["--file-selection", "--directory", "--title=Select Workspace Root Folder"])
+        .output()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let path_str = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if path_str.is_empty() {
+        return Ok(None);
+    }
+
+    let p = PathBuf::from(&path_str);
+    if p.exists() && p.is_dir() {
+        state.workspace.set_root(p.clone()).await;
+        {
+            let mut gm = state.git_manager.write().await;
+            *gm = aether_git::GitManager::new(p);
+        }
+        let info = state.workspace.get_info().await;
+        Ok(Some(info))
+    } else {
+        Ok(None)
+    }
+}
+
 // 2. Terminal Commands
 #[tauri::command]
 pub async fn create_terminal_session(

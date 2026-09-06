@@ -37,6 +37,7 @@ pub fn run() {
             delete_path,
             rename_path,
             set_workspace_root,
+            open_folder_dialog,
             // Terminal
             create_terminal_session,
             write_terminal_input,

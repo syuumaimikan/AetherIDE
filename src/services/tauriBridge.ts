@@ -176,6 +176,19 @@ async function mockInvoke<T>(cmd: string, args?: Record<string, any>): Promise<T
         name: 'AetherIDE',
       } as unknown as T;
 
+    case 'set_workspace_root': {
+      const root = args?.new_root || 'd:/Rust_Proj2/AetherIDE';
+      const name = root.split(/[\\/]/).pop() || root;
+      return { root_path: root, name } as unknown as T;
+    }
+
+    case 'open_folder_dialog': {
+      return {
+        root_path: 'd:/Rust_Proj2/AetherIDE',
+        name: 'AetherIDE',
+      } as unknown as T;
+    }
+
     case 'get_file_tree':
       return {
         name: 'AetherIDE',
@@ -546,6 +559,10 @@ export const TauriBridge = {
 
   // Workspace
   getWorkspaceInfo: () => invokeTauri<WorkspaceInfo>('get_workspace_info'),
+  setWorkspaceRoot: (newRoot: string) =>
+    invokeTauri<WorkspaceInfo>('set_workspace_root', { newRoot }),
+  openFolderDialog: () =>
+    invokeTauri<WorkspaceInfo | null>('open_folder_dialog'),
   getFileTree: (maxDepth?: number) => invokeTauri<FileNode>('get_file_tree', { maxDepth }),
   readFile: (path: string) => invokeTauri<string>('read_file', { path }),
   writeFile: (path: string, content: string) => invokeTauri<void>('write_file', { path, content }),

@@ -1,8 +1,7 @@
 import React, { useState, useRef } from 'react';
 import Editor, { OnMount } from '@monaco-editor/react';
 import { OpenFileTab } from '../types';
-import { Sparkles, X, Zap, Check, Eye } from 'lucide-react';
-import { TauriBridge } from '../services/tauriBridge';
+import { Sparkles, X, Zap } from 'lucide-react';
 
 interface EditorAreaProps {
   openTabs: OpenFileTab[];
@@ -12,6 +11,8 @@ interface EditorAreaProps {
   onContentChange: (newContent: string) => void;
   onSave: () => void;
   onAiInlineEdit: (instruction: string) => void;
+  onOpenFolder?: () => void;
+  onOpenCommandCenter?: () => void;
 }
 
 export const EditorArea: React.FC<EditorAreaProps> = ({
@@ -22,11 +23,12 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
   onContentChange,
   onSave,
   onAiInlineEdit,
+  onOpenFolder,
+  onOpenCommandCenter,
 }) => {
   const [showAiInput, setShowAiInput] = useState(false);
   const [aiInstruction, setAiInstruction] = useState('');
   const [inlineAiEnabled, setInlineAiEnabled] = useState(true);
-  const [lastSuggestedText, setLastSuggestedText] = useState<string | null>(null);
 
   const editorRef = useRef<any>(null);
   const monacoRef = useRef<any>(null);
@@ -43,15 +45,16 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
   };
 
   const getMonacoLanguage = (path: string): string => {
-    if (path.endsWith('.rs')) return 'rust';
-    if (path.endsWith('.ts') || path.endsWith('.tsx')) return 'typescript';
-    if (path.endsWith('.js') || path.endsWith('.jsx')) return 'javascript';
-    if (path.endsWith('.json')) return 'json';
-    if (path.endsWith('.toml')) return 'ini';
-    if (path.endsWith('.md')) return 'markdown';
-    if (path.endsWith('.py')) return 'python';
-    if (path.endsWith('.html')) return 'html';
-    if (path.endsWith('.css')) return 'css';
+    const p = path.toLowerCase();
+    if (p.endsWith('.rs')) return 'rust';
+    if (p.endsWith('.ts') || p.endsWith('.tsx')) return 'typescript';
+    if (p.endsWith('.js') || p.endsWith('.jsx')) return 'javascript';
+    if (p.endsWith('.json')) return 'json';
+    if (p.endsWith('.toml')) return 'ini';
+    if (p.endsWith('.md')) return 'markdown';
+    if (p.endsWith('.py')) return 'python';
+    if (p.endsWith('.html')) return 'html';
+    if (p.endsWith('.css')) return 'css';
     return 'plaintext';
   };
 
@@ -59,7 +62,6 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
     editorRef.current = editor;
     monacoRef.current = monaco;
 
-    // Register Inline Completion Provider for smart ghost text (Cursor / Copilot experience)
     if (providerDisposableRef.current) {
       providerDisposableRef.current.dispose();
     }
@@ -70,19 +72,13 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
       supportedLanguages,
       {
         provideInlineCompletions: async (model, position) => {
-          if (!inlineAiEnabled) {
-            return { items: [] };
-          }
+          if (!inlineAiEnabled) return { items: [] };
 
           const lineContent = model.getLineContent(position.lineNumber);
           const prefix = lineContent.substring(0, position.column - 1).trim();
 
-          // Don't trigger on completely blank lines or when line is empty
-          if (!prefix || prefix.length < 2) {
-            return { items: [] };
-          }
+          if (!prefix || prefix.length < 2) return { items: [] };
 
-          // Contextual heuristic generator for instant zero-latency ghost text
           let suggestion = '';
           const lang = model.getLanguageId();
 
@@ -99,29 +95,16 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
               suggestion = ' result {\n    Ok(val) => val,\n    Err(e) => return Err(e.into()),\n}';
             } else if (prefix.endsWith('struct') && !prefix.includes('{')) {
               suggestion = ' {\n    pub id: String,\n    pub name: String,\n}';
-            } else if (prefix.includes('// TODO')) {
-              suggestion = ' implement non-blocking lock-free event queue';
             }
           } else if (lang === 'typescript' || lang === 'javascript') {
             if (prefix.startsWith('export const') && prefix.includes('=') && !prefix.endsWith('=>')) {
               suggestion = ' () => {\n  return <div>Component</div>;\n};';
             } else if (prefix.startsWith('interface') && !prefix.endsWith('{')) {
               suggestion = ' {\n  id: string;\n  name: string;\n  createdAt: string;\n}';
-            } else if (prefix.startsWith('useEffect(')) {
-              suggestion = '() => {\n    // Auto-subscribe\n  }, []);';
-            } else if (prefix.includes('// TODO')) {
-              suggestion = ' add reactive stream subscriber and error boundary';
-            }
-          } else if (lang === 'python') {
-            if (prefix.startsWith('def') && prefix.endsWith(':')) {
-              suggestion = '\n    """Aether Autonomous Agent Handler."""\n    pass';
-            } else if (prefix.startsWith('class') && prefix.endsWith(':')) {
-              suggestion = '\n    def __init__(self):\n        super().__init__()';
             }
           }
 
           if (suggestion) {
-            setLastSuggestedText(suggestion.split('\n')[0]);
             return {
               items: [
                 {
@@ -139,16 +122,14 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
 
           return { items: [] };
         },
-        freeInlineCompletions: () => {
-          setLastSuggestedText(null);
-        },
+        freeInlineCompletions: () => {},
       }
     );
   };
 
   return (
     <div className="editor-workspace">
-      {/* Tab Bar */}
+      {/* VS Code Tab Bar */}
       <div className="editor-tabs-bar">
         {openTabs.map((tab, idx) => (
           <div
@@ -160,10 +141,10 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
             {tab.isModified && (
               <span
                 style={{
-                  width: 6,
-                  height: 6,
+                  width: 7,
+                  height: 7,
                   borderRadius: '50%',
-                  backgroundColor: 'var(--accent-cyan)',
+                  backgroundColor: '#ffffff',
                 }}
               />
             )}
@@ -174,19 +155,20 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
                 onCloseTab(idx);
               }}
             >
-              <X size={12} />
+              <X size={13} />
             </button>
           </div>
         ))}
+
         {openTabs.length > 0 && (
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px', marginRight: '8px' }}>
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px', paddingRight: '8px' }}>
             <button
               className={`btn btn-sm ${inlineAiEnabled ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => setInlineAiEnabled(!inlineAiEnabled)}
-              title={inlineAiEnabled ? 'Inline Ghost Text: Enabled (Press Tab to accept)' : 'Inline Ghost Text: Disabled'}
+              title={inlineAiEnabled ? 'Ghost AI: ON (Tabで確定)' : 'Ghost AI: OFF'}
               style={{ fontSize: '11px', padding: '2px 8px' }}
             >
-              <Zap size={11} color={inlineAiEnabled ? '#fff' : 'var(--text-muted)'} />
+              <Zap size={11} color={inlineAiEnabled ? '#ffffff' : 'var(--vscode-text-muted)'} />
               <span>Ghost AI: {inlineAiEnabled ? 'ON' : 'OFF'}</span>
             </button>
             <button
@@ -194,7 +176,7 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
               onClick={() => setShowAiInput(!showAiInput)}
               title="Inline AI Assistant (Ctrl+I)"
             >
-              <Sparkles size={12} color="var(--accent-primary)" />
+              <Sparkles size={12} color="var(--vscode-blue)" />
               <span>AI Edit</span>
             </button>
           </div>
@@ -210,35 +192,41 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
             alignItems: 'center',
             gap: '8px',
             padding: '6px 12px',
-            background: 'var(--bg-surface)',
-            borderBottom: '1px solid var(--border-accent)',
+            background: 'var(--vscode-bg-surface)',
+            borderBottom: '1px solid var(--vscode-blue)',
           }}
         >
-          <Sparkles size={14} color="var(--accent-primary)" />
+          <Sparkles size={14} color="var(--vscode-blue)" />
           <input
             type="text"
             className="input-text"
-            style={{ flex: 1 }}
-            placeholder="Ask AI to refactor, write doc comments, or generate functions for this file..."
+            style={{
+              flex: 1,
+              background: 'var(--vscode-bg-input)',
+              border: '1px solid var(--vscode-border)',
+              color: '#ffffff',
+              fontSize: '12px',
+            }}
+            placeholder="AIにリファクタリングやコード生成を依頼 (例: ドキュメントコメントを追加して)..."
             value={aiInstruction}
             onChange={(e) => setAiInstruction(e.target.value)}
             autoFocus
           />
           <button type="submit" className="btn btn-primary btn-sm">
-            Generate
+            生成
           </button>
           <button
             type="button"
             className="btn btn-secondary btn-sm"
             onClick={() => setShowAiInput(false)}
           >
-            Cancel
+            キャンセル
           </button>
         </form>
       )}
 
-      {/* Editor Main Content */}
-      <div className="editor-container" style={{ position: 'relative' }}>
+      {/* Editor Content or VS Code Watermark Welcome Screen */}
+      <div className="editor-container">
         {activeTab ? (
           <>
             <Editor
@@ -249,10 +237,10 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
               onChange={(val) => onContentChange(val || '')}
               onMount={handleEditorDidMount}
               options={{
-                fontFamily: "'JetBrains Mono', Consolas, monospace",
+                fontFamily: "'JetBrains Mono', Consolas, 'Courier New', monospace",
                 fontSize: 13,
                 lineHeight: 20,
-                minimap: { enabled: true },
+                minimap: { enabled: true, side: 'right' },
                 smoothScrolling: true,
                 cursorBlinking: 'smooth',
                 cursorSmoothCaretAnimation: 'on',
@@ -263,32 +251,25 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
                 inlineSuggest: {
                   enabled: inlineAiEnabled,
                   mode: 'subwordSmart',
-                  showToolbar: 'always',
-                },
-                suggest: {
-                  preview: true,
-                  showStatusBar: true,
                 },
               }}
             />
 
-            {/* Subtle Inline AI Status Tag in Editor bottom-right */}
             {inlineAiEnabled && (
               <div
                 style={{
                   position: 'absolute',
-                  bottom: 12,
-                  right: 24,
+                  bottom: 10,
+                  right: 20,
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
-                  background: 'rgba(17, 19, 24, 0.85)',
-                  backdropFilter: 'blur(8px)',
-                  border: '1px solid rgba(99, 102, 241, 0.3)',
-                  padding: '3px 8px',
-                  borderRadius: '12px',
-                  fontSize: '10px',
-                  color: 'var(--text-secondary)',
+                  background: 'rgba(30, 30, 30, 0.9)',
+                  border: '1px solid rgba(0, 120, 212, 0.4)',
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                  fontSize: '11px',
+                  color: 'var(--vscode-text-secondary)',
                   zIndex: 20,
                   pointerEvents: 'none',
                 }}
@@ -298,15 +279,15 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
                     width: 6,
                     height: 6,
                     borderRadius: '50%',
-                    backgroundColor: 'var(--accent-emerald)',
-                    boxShadow: '0 0 6px var(--accent-emerald)',
+                    backgroundColor: '#81b88b',
                   }}
                 />
-                <span>Tab to Accept Suggestion</span>
+                <span>Tabキーで補完確定</span>
               </div>
             )}
           </>
         ) : (
+          /* VS Code Authentic Watermark Welcome Screen */
           <div
             style={{
               display: 'flex',
@@ -314,26 +295,105 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
               alignItems: 'center',
               justifyContent: 'center',
               height: '100%',
-              color: 'var(--text-muted)',
-              gap: '12px',
+              color: 'var(--vscode-text-muted)',
+              gap: '28px',
+              userSelect: 'none',
             }}
           >
-            <svg width="48" height="48" viewBox="0 0 512 512" fill="none" opacity={0.3}>
-              <polygon
-                points="256,96 384,170 384,318 256,392 128,318 128,170"
-                stroke="#6366f1"
-                strokeWidth="24"
-              />
-              <polygon
-                points="256,150 330,290 182,290"
-                stroke="#06b6d4"
-                strokeWidth="24"
-                strokeLinejoin="round"
-              />
-            </svg>
-            <div style={{ fontSize: '14px', fontWeight: 500 }}>No File Open</div>
-            <div style={{ fontSize: '12px' }}>
-              Press <kbd style={{ background: 'var(--bg-surface)', padding: '2px 6px', borderRadius: 4 }}>Ctrl+P</kbd> to quick open or choose from the Explorer.
+            {/* VS Code Large Watermark Ribbon */}
+            <div style={{ opacity: 0.06, marginBottom: '-10px' }}>
+              <svg width="180" height="180" viewBox="0 0 100 100" fill="none">
+                <path
+                  d="M71.2 97.4L96.8 84.8C98.8 83.8 100 81.8 100 79.5V20.5C100 18.2 98.8 16.2 96.8 15.2L71.2 2.6C69.6 1.8 67.7 2.1 66.4 3.3L28.1 38.3L11.7 25.8C10.5 24.9 8.9 24.8 7.6 25.6L1.5 29.4C0.6 30 0 31 0 32.1C0 33.2 0.6 34.2 1.5 34.8L20.2 49.2L1.5 63.6C0.6 64.2 0 65.2 0 66.3C0 67.4 0.6 68.4 1.5 69L7.6 72.8C8.9 73.6 10.5 73.5 11.7 72.6L28.1 60.1L66.4 95.1C67.7 96.3 69.6 96.6 71.2 97.4Z"
+                  fill="#ffffff"
+                />
+              </svg>
+            </div>
+
+            {/* Shortcut Guide matching VS Code Japanese UI */}
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px',
+                fontSize: '13px',
+                minWidth: '340px',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  cursor: 'pointer',
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                }}
+                onClick={onOpenCommandCenter}
+              >
+                <span style={{ color: 'var(--vscode-text-secondary)' }}>チャットを開く</span>
+                <span style={{ display: 'flex', gap: '4px' }}>
+                  <kbd style={{ background: 'rgba(255,255,255,0.06)', padding: '2px 6px', borderRadius: 3, fontSize: '11px' }}>Ctrl</kbd>
+                  <kbd style={{ background: 'rgba(255,255,255,0.06)', padding: '2px 6px', borderRadius: 3, fontSize: '11px' }}>Alt</kbd>
+                  <kbd style={{ background: 'rgba(255,255,255,0.06)', padding: '2px 6px', borderRadius: 3, fontSize: '11px' }}>I</kbd>
+                </span>
+              </div>
+
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  cursor: 'pointer',
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                }}
+                onClick={onOpenCommandCenter}
+              >
+                <span style={{ color: 'var(--vscode-text-secondary)' }}>すべてのコマンドの表示</span>
+                <span style={{ display: 'flex', gap: '4px' }}>
+                  <kbd style={{ background: 'rgba(255,255,255,0.06)', padding: '2px 6px', borderRadius: 3, fontSize: '11px' }}>Ctrl</kbd>
+                  <kbd style={{ background: 'rgba(255,255,255,0.06)', padding: '2px 6px', borderRadius: 3, fontSize: '11px' }}>Shift</kbd>
+                  <kbd style={{ background: 'rgba(255,255,255,0.06)', padding: '2px 6px', borderRadius: 3, fontSize: '11px' }}>P</kbd>
+                </span>
+              </div>
+
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  cursor: 'pointer',
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                }}
+                onClick={onOpenFolder}
+              >
+                <span style={{ color: 'var(--vscode-text-secondary)' }}>フォルダーを開く</span>
+                <span style={{ display: 'flex', gap: '4px' }}>
+                  <kbd style={{ background: 'rgba(255,255,255,0.06)', padding: '2px 6px', borderRadius: 3, fontSize: '11px' }}>Ctrl</kbd>
+                  <kbd style={{ background: 'rgba(255,255,255,0.06)', padding: '2px 6px', borderRadius: 3, fontSize: '11px' }}>K</kbd>
+                  <span style={{ opacity: 0.5 }}>+</span>
+                  <kbd style={{ background: 'rgba(255,255,255,0.06)', padding: '2px 6px', borderRadius: 3, fontSize: '11px' }}>Ctrl</kbd>
+                  <kbd style={{ background: 'rgba(255,255,255,0.06)', padding: '2px 6px', borderRadius: 3, fontSize: '11px' }}>O</kbd>
+                </span>
+              </div>
+
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  cursor: 'pointer',
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                }}
+              >
+                <span style={{ color: 'var(--vscode-text-secondary)' }}>デバッグの開始</span>
+                <span>
+                  <kbd style={{ background: 'rgba(255,255,255,0.06)', padding: '2px 6px', borderRadius: 3, fontSize: '11px' }}>F5</kbd>
+                </span>
+              </div>
             </div>
           </div>
         )}

@@ -7,71 +7,103 @@ import {
   Bot,
   Terminal,
   Settings,
-  ShieldCheck,
+  Bug,
+  Blocks,
+  Cpu,
+  UserCircle,
 } from 'lucide-react';
 
 interface ActivityBarProps {
-  activeTab: ActivityTab;
+  activeTab: ActivityTab | null;
   setActiveTab: (tab: ActivityTab) => void;
   openSettings: () => void;
+  gitChangeCount?: number;
 }
 
 export const ActivityBar: React.FC<ActivityBarProps> = ({
   activeTab,
   setActiveTab,
   openSettings,
+  gitChangeCount = 0,
 }) => {
   return (
     <aside className="activity-bar">
-      <div className="activity-bar-top">
+      <div className="activity-bar-group">
+        {/* Explorer */}
         <button
-          className={`activity-icon-btn ${activeTab === 'explorer' ? 'active' : ''}`}
+          className={`activity-item ${activeTab === 'explorer' ? 'active' : ''}`}
           onClick={() => setActiveTab('explorer')}
-          title="Explorer (Ctrl+Shift+E)"
+          title="エクスプローラー (Ctrl+Shift+E)"
         >
-          <Files size={18} />
+          <Files size={20} />
         </button>
 
+        {/* Search */}
         <button
-          className={`activity-icon-btn ${activeTab === 'search' ? 'active' : ''}`}
+          className={`activity-item ${activeTab === 'search' ? 'active' : ''}`}
           onClick={() => setActiveTab('search')}
-          title="Search Workspace (Ctrl+Shift+F)"
+          title="検索 (Ctrl+Shift+F)"
         >
-          <Search size={18} />
+          <Search size={20} />
         </button>
 
+        {/* Source Control */}
         <button
-          className={`activity-icon-btn ${activeTab === 'git' ? 'active' : ''}`}
+          className={`activity-item ${activeTab === 'git' ? 'active' : ''}`}
           onClick={() => setActiveTab('git')}
-          title="Source Control (Ctrl+Shift+G)"
+          title="ソース管理 (Ctrl+Shift+G)"
         >
-          <GitBranch size={18} />
+          <GitBranch size={20} />
+          {gitChangeCount > 0 && (
+            <span className="activity-badge">{gitChangeCount}</span>
+          )}
         </button>
 
+        {/* Run & Debug */}
         <button
-          className={`activity-icon-btn ${activeTab === 'agents' ? 'active' : ''}`}
-          onClick={() => setActiveTab('agents')}
-          title="AI Agent Swarm & Orchestrator"
-        >
-          <Bot size={18} />
-        </button>
-
-        <button
-          className={`activity-icon-btn ${activeTab === 'terminal' ? 'active' : ''}`}
+          className={`activity-item ${activeTab === 'terminal' ? 'active' : ''}`}
           onClick={() => setActiveTab('terminal')}
-          title="Terminal & Process Monitor"
+          title="実行とデバッグ (Ctrl+Shift+D)"
         >
-          <Terminal size={18} />
+          <Bug size={20} />
+        </button>
+
+        {/* Extensions */}
+        <button
+          className={`activity-item ${activeTab === 'agents' ? 'active' : ''}`}
+          onClick={() => setActiveTab('agents')}
+          title="AI Agent Swarm & 拡張機能 (Ctrl+Shift+X)"
+        >
+          <Blocks size={20} />
+        </button>
+
+        {/* Agent OS Cockpit */}
+        <button
+          className="activity-item"
+          onClick={() => setActiveTab('agents')}
+          title="AI Agent OS: システム & ホスト操作"
+        >
+          <Cpu size={20} />
         </button>
       </div>
 
-      <div className="activity-bar-bottom">
+      <div className="activity-bar-group">
+        {/* Accounts */}
         <button
-          className="activity-icon-btn"
+          className="activity-item"
+          title="アカウント"
           onClick={openSettings}
-          title="Settings & Model Providers"
         >
-          <Settings size={18} />
+          <UserCircle size={20} />
+        </button>
+
+        {/* Settings */}
+        <button
+          className="activity-item"
+          onClick={openSettings}
+          title="管理 (Ctrl+,)"
+        >
+          <Settings size={20} />
         </button>
       </div>
     </aside>

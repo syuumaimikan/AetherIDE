@@ -402,13 +402,13 @@ export const AgentChatPanel: React.FC<AgentChatPanelProps> = ({
           value={inputPrompt}
           onChange={(e) => setInputPrompt(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Ask AETHER Copilot or press Ctrl+Enter to send..."
+          placeholder="次にビルドする内容を説明します..."
           style={{
             width: '100%',
             padding: '8px 10px',
             borderRadius: '6px',
-            background: 'var(--bg-surface)',
-            border: '1px solid var(--border-muted)',
+            background: 'var(--vscode-bg-input)',
+            border: '1px solid var(--vscode-border)',
             color: '#fff',
             fontSize: '12px',
             resize: 'none',
@@ -418,18 +418,20 @@ export const AgentChatPanel: React.FC<AgentChatPanelProps> = ({
         />
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
-            Ctrl + Enter to send
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--vscode-text-secondary)' }}>
+            <span style={{ cursor: 'pointer', padding: '2px 6px', background: 'rgba(255,255,255,0.06)', borderRadius: '3px' }}>+</span>
+            <span style={{ cursor: 'pointer', padding: '2px 6px', background: 'rgba(255,255,255,0.06)', borderRadius: '3px' }}>@ Agent</span>
+            <span style={{ cursor: 'pointer', padding: '2px 6px', background: 'rgba(255,255,255,0.06)', borderRadius: '3px' }}>Auto</span>
+          </div>
 
           <button
             disabled={!inputPrompt.trim() || isGenerating}
             onClick={handleSendMessage}
             style={{
-              padding: '6px 14px',
+              padding: '6px 12px',
               borderRadius: '6px',
-              background: inputPrompt.trim() ? 'var(--accent-primary)' : 'var(--bg-surface)',
-              color: inputPrompt.trim() ? '#fff' : 'var(--text-muted)',
+              background: inputPrompt.trim() ? 'var(--vscode-blue)' : 'var(--vscode-bg-surface)',
+              color: inputPrompt.trim() ? '#fff' : 'var(--vscode-text-muted)',
               border: 'none',
               fontSize: '11px',
               fontWeight: 600,
@@ -437,11 +439,10 @@ export const AgentChatPanel: React.FC<AgentChatPanelProps> = ({
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              transition: 'all var(--trans-fast)',
             }}
           >
             <Send size={12} />
-            Send
+            <span>送信</span>
           </button>
         </div>
       </div>

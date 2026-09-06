@@ -31,6 +31,7 @@ import { AgentOsCockpit } from './components/AgentOsCockpit';
 import { AgentChatPanel } from './components/AgentChatPanel';
 import { DiffReviewModal } from './components/DiffReviewModal';
 import { KeybindingsModal } from './components/KeybindingsModal';
+import { StatusBar } from './components/StatusBar';
 import { Bot, GitBranch, MessageSquare, Shield, Sparkles } from 'lucide-react';
 
 export const App: React.FC = () => {
@@ -179,6 +180,37 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [openTabs, activeTabIndex]);
 
+  // Workspace & Folder Operations
+  const handleOpenFolder = async () => {
+    try {
+      const info = await TauriBridge.openFolderDialog();
+      if (info) {
+        setWorkspaceInfo(info);
+        const tree = await TauriBridge.getFileTree();
+        setFileTree(tree);
+        const git = await TauriBridge.getGitStatus();
+        setGitStatus(git);
+        setOpenTabs([]);
+        setActiveTabIndex(-1);
+      }
+    } catch (err) {
+      console.error('Failed to open folder:', err);
+    }
+  };
+
+  const handleNewFile = () => {
+    const num = openTabs.length + 1;
+    const newTab: OpenFileTab = {
+      path: `/Untitled-${num}.rs`,
+      name: `Untitled-${num}.rs`,
+      content: '// AETHER IDE\nfn main() {\n    \n}\n',
+      isModified: true,
+      language: 'rust',
+    };
+    setOpenTabs((prev) => [...prev, newTab]);
+    setActiveTabIndex(openTabs.length);
+  };
+
   // File Operations
   const handleOpenFile = async (path: string) => {
     const existingIndex = openTabs.findIndex((t) => t.path === path);
@@ -314,10 +346,17 @@ export const App: React.FC = () => {
       <TitleBar
         appMode={appMode}
         setAppMode={setAppMode}
+        workspaceName={workspaceInfo?.name || 'AetherIDE'}
         openCommandCenter={() => setIsCommandCenterOpen(true)}
         toggleTerminal={() => setIsTerminalOpen(!isTerminalOpen)}
+        toggleLeftSidebar={() => setActiveActivityTab((prev) => (prev ? (null as any) : 'explorer'))}
+        toggleRightSidebar={() => setRightPanelTab((prev) => (prev === 'copilot' ? 'swarm' : 'copilot'))}
         onRunAutonomousTeam={() => handleRunAutonomousTeam()}
         onOpenKeybindings={() => setIsKeybindingsOpen(true)}
+        onOpenFolder={handleOpenFolder}
+        onOpenFile={() => setIsCommandCenterOpen(true)}
+        onSaveFile={handleSaveFile}
+        onNewFile={handleNewFile}
       />
 
       {/* Main Workspace Layout */}
@@ -325,14 +364,22 @@ export const App: React.FC = () => {
         {/* Activity Bar */}
         <ActivityBar
           activeTab={activeActivityTab}
-          setActiveTab={setActiveActivityTab}
+          setActiveTab={(tab) => {
+            if (activeActivityTab === tab) {
+              setActiveActivityTab(null as any);
+            } else {
+              setActiveActivityTab(tab);
+            }
+          }}
           openSettings={() => setIsSettingsOpen(true)}
+          gitChangeCount={gitStatus?.changes.length || 0}
         />
 
         {/* Left Sidebars */}
         {activeActivityTab === 'explorer' && (
           <FileExplorer
             rootNode={fileTree}
+            workspaceName={workspaceInfo?.name || 'AetherIDE'}
             activeFilePath={openTabs[activeTabIndex]?.path}
             onSelectFile={handleOpenFile}
             onCreateFile={async (parent, name) => {
@@ -357,6 +404,7 @@ export const App: React.FC = () => {
               const tree = await TauriBridge.getFileTree();
               setFileTree(tree);
             }}
+            onOpenFolder={handleOpenFolder}
           />
         )}
 
@@ -435,6 +483,8 @@ export const App: React.FC = () => {
                 onContentChange={handleContentChange}
                 onSave={handleSaveFile}
                 onAiInlineEdit={handleAiInlineEdit}
+                onOpenFolder={handleOpenFolder}
+                onOpenCommandCenter={() => setIsCommandCenterOpen(true)}
               />
             </>
           )}
@@ -466,9 +516,9 @@ export const App: React.FC = () => {
                 <button
                   onClick={() => setRightPanelTab('swarm')}
                   style={{
-                    background: rightPanelTab === 'swarm' ? 'var(--bg-surface)' : 'transparent',
-                    border: rightPanelTab === 'swarm' ? '1px solid var(--border-subtle)' : 'none',
-                    color: rightPanelTab === 'swarm' ? '#fff' : 'var(--text-secondary)',
+                    background: rightPanelTab === 'swarm' ? 'rgba(255,255,255,0.08)' : 'transparent',
+                    border: 'none',
+                    color: rightPanelTab === 'swarm' ? '#fff' : 'var(--vscode-text-secondary)',
                     padding: '3px 8px',
                     borderRadius: '4px',
                     fontSize: '11px',
@@ -479,15 +529,15 @@ export const App: React.FC = () => {
                     gap: '4px',
                   }}
                 >
-                  <Bot size={13} color="var(--accent-primary)" />
+                  <Bot size={13} color="var(--vscode-blue)" />
                   Swarm
                 </button>
                 <button
                   onClick={() => setRightPanelTab('copilot')}
                   style={{
-                    background: rightPanelTab === 'copilot' ? 'var(--bg-surface)' : 'transparent',
-                    border: rightPanelTab === 'copilot' ? '1px solid var(--border-subtle)' : 'none',
-                    color: rightPanelTab === 'copilot' ? '#fff' : 'var(--text-secondary)',
+                    background: rightPanelTab === 'copilot' ? 'rgba(255,255,255,0.08)' : 'transparent',
+                    border: 'none',
+                    color: rightPanelTab === 'copilot' ? '#fff' : 'var(--vscode-text-secondary)',
                     padding: '3px 8px',
                     borderRadius: '4px',
                     fontSize: '11px',
@@ -498,16 +548,16 @@ export const App: React.FC = () => {
                     gap: '4px',
                   }}
                 >
-                  <Sparkles size={13} color="var(--accent-cyan)" />
-                  Copilot
+                  <Sparkles size={13} color="var(--vscode-accent)" />
+                  チャット
                 </button>
               </div>
 
               <span
                 style={{
                   fontSize: '10px',
-                  background: 'rgba(99, 102, 241, 0.2)',
-                  color: 'var(--accent-primary)',
+                  background: 'rgba(0, 120, 212, 0.15)',
+                  color: 'var(--vscode-blue)',
                   padding: '2px 6px',
                   borderRadius: 4,
                 }}
@@ -534,8 +584,8 @@ export const App: React.FC = () => {
                     setTasks(taskList);
                   }}
                 />
-                <div style={{ borderTop: '1px solid var(--border-subtle)', height: '220px', display: 'flex', flexDirection: 'column' }}>
-                  <div style={{ padding: '6px 12px', fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                <div style={{ borderTop: '1px solid var(--vscode-border)', height: '220px', display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ padding: '6px 12px', fontSize: '11px', fontWeight: 600, color: 'var(--vscode-text-secondary)' }}>
                     Live Agent Execution Log
                   </div>
                   <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -548,34 +598,17 @@ export const App: React.FC = () => {
         )}
       </div>
 
-      {/* Status Bar */}
-      <footer className="statusbar">
-        <div className="statusbar-left">
-          <div className="statusbar-item">
-            <span className={`status-dot ${activeStageIndex >= 0 ? 'running' : ''}`} />
-            <span>{activeStageIndex >= 0 ? 'Multi-Agent Team Orchestrating' : 'Swarm Idle'}</span>
-          </div>
-          <div className="statusbar-item">
-            <GitBranch size={11} />
-            <span>{gitStatus?.current_branch || 'main'}</span>
-          </div>
-        </div>
-
-        <div className="statusbar-right">
-          <div className="statusbar-item">
-            <span>Tokens: {metrics.total_tokens_used.toLocaleString()}</span>
-          </div>
-          <div className="statusbar-item">
-            <span>UTF-8</span>
-          </div>
-          <div className="statusbar-item">
-            <span>Rust / TypeScript</span>
-          </div>
-          <div className="statusbar-item" style={{ color: 'var(--accent-cyan)' }}>
-            <span>AETHER v0.1.0</span>
-          </div>
-        </div>
-      </footer>
+      {/* VS Code Status Bar */}
+      <StatusBar
+        gitStatus={gitStatus}
+        activeLanguage={openTabs[activeTabIndex]?.language === 'rust' ? 'Rust' : openTabs[activeTabIndex]?.language === 'typescript' ? 'TypeScript' : 'Plain Text'}
+        onOpenTerminal={() => setIsTerminalOpen(!isTerminalOpen)}
+        onOpenKeybindings={() => setIsKeybindingsOpen(true)}
+        onRefreshGit={async () => {
+          const s = await TauriBridge.getGitStatus();
+          setGitStatus(s);
+        }}
+      />
 
       {/* Command Center Modal */}
       <CommandCenter
